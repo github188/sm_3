@@ -24,7 +24,7 @@ int main()
   unsigned int cnt = 0;
 
   unsigned int shm1 = SHM_IND_TOTAL_SIZE;
-  shmid1 = shmget((key_t)5678, shm1, 0666 | IPC_CREAT);
+  shmid1 = shmget((key_t)2234, shm1, 0666 | IPC_CREAT);
   if (shmid1 == -1) 
   {
     fprintf(stderr, "shmget failed\n");

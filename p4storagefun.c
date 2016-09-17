@@ -1,6 +1,6 @@
 #include "p4storage.h"
 
-/* Open share memory index file. */
+/* Open share memory index file. (This function has been abandoned.) */
 FILE *open_shm_index(const char *path)
 {
 	if (path == NULL)
@@ -23,7 +23,7 @@ FILE *open_shm_index(const char *path)
 	return indexfp;
 }
 
-/* Close share memory index file. */
+/* Close share memory index file. (This function has been abandoned.) */
 int close_shm_index(FILE *indexfp)
 {
 	if (indexfp == NULL)
@@ -108,7 +108,7 @@ int get_one_index(void *shared_index_memory_start, P4VEM_ShMIndex_t *newshmindex
 
 	/* need have interval of one frame, let code module easy to judge, if no this condition,
 	when read_pos equal write_pos, code module can't judge itself to be able to write. */
-	if ((read_pos + 1)%SHM_INDEX_NUM == write_pos)
+	if ((read_pos + 1) % SHM_INDEX_NUM == write_pos)
 	{
 		printf("(read_pos+1 == write_pos)::interval of one frame.\n");
 		return -1;
@@ -145,15 +145,15 @@ int get_one_frame(void *shared_memory_start, void *shared_memory_end, P4VEM_ShMI
 	{
 		if (cshmindex->type == P_FRAME_TYPE)
 		{
-			unsigned int tmp1 = sizeof(RMSTREAM_HEADER) + sizeof(RMFI2_VIDEOINFO);
+			unsigned int tmp1 = FRAME_START_FLAG + sizeof(RMSTREAM_HEADER) + sizeof(RMFI2_VIDEOINFO);
 			unsigned int tmp2 = sizeof(RMFI2_RTCTIME);
 			unsigned int tmp3 = tmp1 + tmp2;
-			memcpy(frame, shared_memory_start + cshmindex->offset, tmp1);
+			memcpy(frame, shared_memory_start + cshmindex->offset + FRAME_START_FLAG, tmp1 - FRAME_START_FLAG);
 			memcpy((void*)frame + tmp3, shared_memory_start + cshmindex->offset + tmp1, cshmindex->lenth - tmp1);	
 		}
 		else
 		{
-			memcpy(frame, shared_memory_start + cshmindex->offset, cshmindex->lenth);
+			memcpy(frame, shared_memory_start + cshmindex->offset + FRAME_START_FLAG, cshmindex->lenth - FRAME_START_FLAG);
 		}		
 
 		shm_read_offset = cshmindex->offset + cshmindex->lenth;
@@ -167,31 +167,49 @@ int get_one_frame(void *shared_memory_start, void *shared_memory_end, P4VEM_ShMI
 		unsigned int SHM_HEAD_SIZE = sizeof(unsigned int) * 2;
 		if (cshmindex->type == P_FRAME_TYPE)
 		{
-			unsigned int tmp1 = sizeof(RMSTREAM_HEADER) + sizeof(RMFI2_VIDEOINFO);
+			unsigned int tmp1 = FRAME_START_FLAG + sizeof(RMSTREAM_HEADER) + sizeof(RMFI2_VIDEOINFO);
 			unsigned int tmp2 = sizeof(RMFI2_RTCTIME);
 			unsigned int tmp3 = tmp1 + tmp2;
+
 			if (to_end_len >= tmp1)
 			{
 				unsigned int tmp = to_end_len - tmp1;
-				memcpy(frame, shared_memory_start + cshmindex->offset, tmp1);
+				memcpy(frame, shared_memory_start + cshmindex->offset + FRAME_START_FLAG, tmp1 - FRAME_START_FLAG);
 				memcpy((void*)frame + tmp3, shared_memory_start + cshmindex->offset + tmp1, tmp);
 				memcpy((void*)frame + tmp3 + tmp, shared_memory_start + SHM_HEAD_SIZE, from_start_len);
 			}
 			else
 			{
-				unsigned int tmp = tmp1 - to_end_len;
-				memcpy(frame, shared_memory_start + cshmindex->offset, to_end_len);
-				memcpy((void*)frame + to_end_len, shared_memory_start + SHM_HEAD_SIZE, tmp);
-				memcpy((void*)frame + tmp3, shared_memory_start + tmp + SHM_HEAD_SIZE, cshmindex->lenth - tmp1);
+				if (to_end_len >= FRAME_START_FLAG)
+				{
+					unsigned int tmp = tmp1 - to_end_len;
+					memcpy(frame, shared_memory_start + cshmindex->offset + FRAME_START_FLAG, to_end_len - FRAME_START_FLAG);
+					memcpy((void*)frame + (to_end_len - FRAME_START_FLAG), shared_memory_start + SHM_HEAD_SIZE, tmp);
+					memcpy((void*)frame + tmp3, shared_memory_start + tmp + SHM_HEAD_SIZE, cshmindex->lenth - tmp1);
+				}
+				else
+				{
+					unsigned int tmp = from_start_len + (FRAME_START_FLAG - to_end_len);
+					memcpy(frame, shared_memory_start + SHM_HEAD_SIZE + tmp, tmp1 - FRAME_START_FLAG);
+					memcpy((void*)frame + tmp3, shared_memory_start + SHM_HEAD_SIZE + tmp + (tmp1 - FRAME_START_FLAG), cshmindex->lenth - tmp1);
+				}
 			}
 		}
 		else
 		{
-			memcpy(frame, shared_memory_start + cshmindex->offset, to_end_len);
-			memcpy((void*)frame + to_end_len, shared_memory_start + SHM_HEAD_SIZE, from_start_len);	
+			if (to_end_len >= FRAME_START_FLAG)
+			{
+				memcpy(frame, shared_memory_start + cshmindex->offset + FRAME_START_FLAG, to_end_len - FRAME_START_FLAG);
+				memcpy((void*)frame + (to_end_len - FRAME_START_FLAG), shared_memory_start + SHM_HEAD_SIZE, from_start_len);	
+			}
+			else
+			{
+				unsigned int tmp = from_start_len + (FRAME_START_FLAG - to_end_len);
+				memcpy(frame, shared_memory_start + SHM_HEAD_SIZE + tmp, cshmindex->lenth - FRAME_START_FLAG);
+			}
 		}
 	
-		shm_read_offset = sizeof(unsigned int)*2 + from_start_len;
+		shm_read_offset = SHM_HEAD_SIZE + from_start_len;
 		return 1;
 	}	
 
@@ -232,7 +250,6 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 		INDEX_INFO lrecord = {0};
 		INDEX_INFO crecord = {0};	
 
-		int ret = -1;
 		int ctime = 0;
 		char startbuf[7] = {0};
 		char endbuf[7] = {0};
@@ -295,16 +312,16 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 			#ifdef DEBUG
         		printf("video tmp file exist.\n");  
 			#endif
-				#ifdef DEBUG
-					printf("%m::tmp file already closed, maybe restart this process. Now open tmp file again.\n");
-					//printf("%s",strerror(errno)); // equal to printf("%m"); 
-				#endif	
 				for (i = 0; i < CHANNEL_CNT; i++)
 				{
 					if (channel_tmp[i].channel == cshmindex->channel)
 					{
 						if((fcntl(channel_tmp[i].vt_fd, F_GETFL) == -1) && (fcntl(channel_tmp[i].it_fd, F_GETFL) == -1))
 						{
+							#ifdef DEBUG
+							printf("%m::tmp file already closed, maybe restart this process. Now open tmp file again.\n");
+							//printf("%s",strerror(errno)); // equal to printf("%m"); 
+							#endif	
 							channel_tmp[i].vt_fd = open_tmp(video_tmp);
 							channel_tmp[i].it_fd = open_tmp(index_tmp);
 							//return -1;
@@ -323,13 +340,12 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 		{		
 			if (channel_tmp[i].channel == cshmindex->channel)
 			{
-				ret = get_first_index_record(channel_tmp[i].it_fd, &frecord);
-				if (ret == -1)
-				{
-					return -1;
-				}
-				ret = get_last_index_record(channel_tmp[i].it_fd, &lrecord);
-				if (ret == -1)
+				int ret1 = -1;
+				int ret2 = -1;
+
+				ret1 = get_first_index_record(channel_tmp[i].it_fd, &frecord);
+				ret2 = get_last_index_record(channel_tmp[i].it_fd, &lrecord);
+				if (ret1 == -1 || ret2 == -1)
 				{
 					return -1;
 				}
@@ -352,8 +368,8 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 			{
 				if (channel_tmp[i].channel == cshmindex->channel)
 				{
-					write(channel_tmp[i].vt_fd, frame, cshmindex->lenth); 
-					get_current_index_record(channel_tmp[i].it_fd, cshmindex, frame, &crecord);
+					write(channel_tmp[i].vt_fd, frame, cshmindex->lenth - FRAME_START_FLAG); 
+					get_current_index_record(channel_tmp[i].vt_fd, cshmindex, frame, &crecord);
 					put_current_index_record(channel_tmp[i].it_fd, &crecord);
 					break;
 				}
@@ -361,7 +377,7 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 			memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));
 			return 1;
 		}
-		if ((ctime-lrecord.time) > 2)
+		if ((ctime-lrecord.time) > 2) /* discontinuous */
 		{
 			if ((access(video_tmp, F_OK))!=-1) 
 			{
@@ -371,35 +387,21 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 					{
 						close(channel_tmp[i].vt_fd);
 						close(channel_tmp[i].it_fd);
+
+						rename(video_tmp, video_name_buf);
+						rename(index_tmp, index_name_buf);
+
+						channel_tmp[i].vt_fd = open_tmp(video_tmp);
+						channel_tmp[i].it_fd = open_tmp(index_tmp);
+						init_index_tmp(channel_tmp[i].it_fd);
+
+						write(channel_tmp[i].vt_fd, frame, cshmindex->lenth - FRAME_START_FLAG); 
+						get_current_index_record(channel_tmp[i].vt_fd, cshmindex, frame, &crecord);
+						put_current_index_record(channel_tmp[i].it_fd, &crecord);
 						break;
 					}
 				}			
 			}			
-			/* rename video and index tmp file */ 
-			rename(video_tmp, video_name_buf);
-			rename(index_tmp, index_name_buf);
-			/* create new video and index tmp file */
-			for (i = 0; i < CHANNEL_CNT; i++)
-			{
-				if (channel_tmp[i].channel == cshmindex->channel)
-				{
-					channel_tmp[i].vt_fd = open_tmp(video_tmp);
-					channel_tmp[i].it_fd = open_tmp(index_tmp);
-					init_index_tmp(channel_tmp[i].it_fd);
-					break;
-				}
-			}
-			/* storage one frame data and one index record */
-			for (i = 0; i < CHANNEL_CNT; i++)
-			{
-				if (channel_tmp[i].channel == cshmindex->channel)
-				{
-					write(channel_tmp[i].vt_fd, frame, cshmindex->lenth); 
-					get_current_index_record(channel_tmp[i].it_fd, cshmindex, frame, &crecord);
-					put_current_index_record(channel_tmp[i].it_fd, &crecord);
-					break;
-				}
-			}
 			/* update share memory read_offset */
 			memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));
 			return 1;
@@ -411,68 +413,26 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 			{		
 				if (channel_tmp[i].channel == cshmindex->channel)
 				{
-					ret = get_last_front_index_record(channel_tmp[i].it_fd, &lfrecord);
-					if (ret == -1)
+					int ret1 = -1;
+					int ret2 = -1;
+					int ret3 = -1;
+
+					ret1 = get_last_front_index_record(channel_tmp[i].it_fd, &lfrecord);
+					ret2 = get_first_index_record(channel_tmp[i].it_fd, &frecord);
+					ret3 = get_last_index_record(channel_tmp[i].it_fd, &lrecord);
+					if (ret1 == -1 || ret2 == -1 || ret3 == -1)
 					{
 						return -1;
 					}
 
-					ret = get_first_index_record(channel_tmp[i].it_fd, &frecord);
-					if (ret == -1)
-					{
-						return -1;
-					}
 					convert_utc_to_localtime(&frecord.time, startbuf);
-
-					ret = get_last_index_record(channel_tmp[i].it_fd, &lrecord);
-					if (ret == -1)
-					{
-						return -1;
-					}
 					convert_utc_to_localtime(&lrecord.time, endbuf);
 
 					get_current_index_record(channel_tmp[i].vt_fd, cshmindex, frame, &crecord);
 					break;
 				}
 			}
-			if (((crecord.time - frecord.time) == SEG_TIME) && (lfrecord.time == lrecord.time)) /*1224*/
-			{
-				lrecord.time = lrecord.time + 1; /* last index time equal front of last index time */
-				convert_utc_to_localtime(&lrecord.time, endbuf);
-				sprintf(video_name_buf, "%s/%02d-%02d%02d%02d-%s-%s.h264",
- 										video_day_path, cshmindex->channel, cshmindex->time.year, 
-										cshmindex->time.month, cshmindex->time.day, startbuf, endbuf);
-				sprintf(index_name_buf, "%s/%02d-%02d%02d%02d-%s-%s.index", 
-										index_day_path, cshmindex->channel, cshmindex->time.year,
- 										cshmindex->time.month, cshmindex->time.day, startbuf, endbuf);
-				for (i = 0; i < CHANNEL_CNT; i++)
-				{
-					if (channel_tmp[i].channel == cshmindex->channel)
-					{
-						close(channel_tmp[i].vt_fd);
-						close(channel_tmp[i].it_fd);
-						break;
-					}
-				}
-				rename(video_tmp, video_name_buf);
-				rename(index_tmp, index_name_buf);	
-				for (i = 0; i < CHANNEL_CNT; i++)
-				{
-					if (channel_tmp[i].channel == cshmindex->channel)
-					{
-						channel_tmp[i].vt_fd = open_tmp(video_tmp);
-						channel_tmp[i].it_fd = open_tmp(index_tmp);
-						init_index_tmp(channel_tmp[i].it_fd);
-						write(channel_tmp[i].vt_fd, frame, cshmindex->lenth); 
-						get_current_index_record(channel_tmp[i].it_fd, cshmindex, frame, &crecord);
-						put_current_index_record(channel_tmp[i].it_fd, &crecord);
-						break;
-					}
-				}
-				memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));
-				return 1;			
-			}
-			else if ((crecord.time - frecord.time) == SEG_TIME) /* 1234 */			
+		 	if ((crecord.time - frecord.time) >= SEG_TIME) /* 123 / 133 */			
 			{
 				for (i = 0; i < CHANNEL_CNT; i++)
 				{
@@ -480,20 +440,16 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 					{
 						close(channel_tmp[i].vt_fd);
 						close(channel_tmp[i].it_fd);
-						break;
-					}
-				}
-				rename(video_tmp, video_name_buf);
-				rename(index_tmp, index_name_buf);	
-				for (i = 0; i < CHANNEL_CNT; i++)
-				{
-					if (channel_tmp[i].channel == cshmindex->channel)
-					{
+
+						rename(video_tmp, video_name_buf);
+						rename(index_tmp, index_name_buf);	
+
 						channel_tmp[i].vt_fd = open_tmp(video_tmp);
 						channel_tmp[i].it_fd = open_tmp(index_tmp);
 						init_index_tmp(channel_tmp[i].it_fd);
-						write(channel_tmp[i].vt_fd, frame, cshmindex->lenth); 
-						get_current_index_record(channel_tmp[i].it_fd, cshmindex, frame, &crecord);
+
+						write(channel_tmp[i].vt_fd, frame, cshmindex->lenth - FRAME_START_FLAG); 
+						get_current_index_record(channel_tmp[i].vt_fd, cshmindex, frame, &crecord);
 						put_current_index_record(channel_tmp[i].it_fd, &crecord);
 						break;
 					}
@@ -501,43 +457,14 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 				memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));
 				return 1;	
 			}
-			else if (((crecord.time - frecord.time + 1) == SEG_TIME) && (lrecord.time == crecord.time)) /* 1233 */
-			{	
-				for (i = 0; i < CHANNEL_CNT; i++)
-				{
-					if (channel_tmp[i].channel == cshmindex->channel)
-					{
-						write(channel_tmp[i].vt_fd, frame, cshmindex->lenth); 
-						get_current_index_record(channel_tmp[i].it_fd, cshmindex, frame, &crecord);
-						put_current_index_record(channel_tmp[i].it_fd, &crecord);
-						close(channel_tmp[i].vt_fd);
-						close(channel_tmp[i].it_fd);
-						break;
-					}
-				}
-				rename(video_tmp, video_name_buf);
-				rename(index_tmp, index_name_buf);	
-				for (i = 0; i < CHANNEL_CNT; i++)
-				{
-					if (channel_tmp[i].channel == cshmindex->channel)
-					{
-						channel_tmp[i].vt_fd = open_tmp(video_tmp);
-						channel_tmp[i].it_fd = open_tmp(index_tmp);
-						init_index_tmp(channel_tmp[i].it_fd);
-						break;
-					}
-				}
-				memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));
-				return 1;
-			}
-			else
+			else /* 122 */
 			{
 				for (i = 0; i < CHANNEL_CNT; i++)
 				{
 					if (channel_tmp[i].channel == cshmindex->channel)
 					{
-						write(channel_tmp[i].vt_fd, frame, cshmindex->lenth); 
-						get_current_index_record(channel_tmp[i].it_fd, cshmindex, frame, &crecord);
+						write(channel_tmp[i].vt_fd, frame, cshmindex->lenth - FRAME_START_FLAG); 
+						get_current_index_record(channel_tmp[i].vt_fd, cshmindex, frame, &crecord);
 						put_current_index_record(channel_tmp[i].it_fd, &crecord);
 						break;
 					}
@@ -549,13 +476,13 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 	}
 	else
 	{
-		unsigned tmp = sizeof(RMSTREAM_HEADER)+sizeof(RMFI2_VIDEOINFO);
+		unsigned tmp = sizeof(RMSTREAM_HEADER) + sizeof(RMFI2_VIDEOINFO);
 		for (i = 0; i < CHANNEL_CNT; i++)
 		{
 			if (channel_tmp[i].channel == cshmindex->channel)
 			{
 				write(channel_tmp[i].vt_fd, frame, tmp); 
-				write(channel_tmp[i].vt_fd, (void*)frame + tmp + sizeof(RMFI2_RTCTIME), cshmindex->lenth - tmp); 
+				write(channel_tmp[i].vt_fd, (void*)frame + tmp + sizeof(RMFI2_RTCTIME), cshmindex->lenth - tmp - FRAME_START_FLAG); 
 				break;
 			}
 		}
@@ -607,11 +534,10 @@ int get_current_index_record(int video_tmp_fd, P4VEM_ShMIndex_t *cshmindex, FRAM
 	{
 		return -1;
 	}
-
 	crecord->time = ctime;
-	crecord->offset = end_pos - cshmindex->lenth;
-	crecord->len = cshmindex->lenth;
-	
+	crecord->offset = end_pos - (cshmindex->lenth - FRAME_START_FLAG);
+	crecord->len = cshmindex->lenth - FRAME_START_FLAG;
+
 	return 1;
 }
 
@@ -744,7 +670,7 @@ void get_search_channel_date(char *channel_date_path, int size, FILE *file)
 
 	unsigned char tmp = 0;
 
-	printf("Please input video search channel-date. Notice: dont't input any blank\nUsage: Channel-YearMonthDay\nSuch as:01-160824\nPlease start input channel and date:");
+	printf("Please input video search channel-date. Notice: dont't input any blank\nUsage: Channel-YearMonthDay\nSuch as:01-160816\nPlease start input channel and date:");
 	fflush(stdout);
 
 	fgets(channel_date_path, size, file);
@@ -773,7 +699,7 @@ void get_search_time(char *time, int size, FILE *file)
 	}
 
 	unsigned char tmp = 0;
-	printf("Please input video search time. Notice: dont't input any blank\nUsage: HourMinuteSecond-HourMinuteSecond\nSuch as:100508-100509\nPlease start input time:");
+	printf("Please input video search time. Notice: dont't input any blank\nUsage: HourMinuteSecond-HourMinuteSecond\nSuch as:084007-084016\nPlease start input time:");
 	fflush(stdout);
 
 	fgets(time, size, file);
@@ -943,8 +869,10 @@ int search_time_check(char *time, int size)
 		return -1;
 	}
 
-	if ((strcmp(start_time, end_time) > 0) || (strcmp(start_time + 3, end_time + 3) > 0) ||
-		(strcmp(start_time + 6, end_time + 6) > 0))
+	if ((strcmp(start_time, end_time) > 0) || 
+		((strcmp(start_time, end_time) > 0) && (strcmp(start_time + 3, end_time + 3) > 0)) ||
+		((strcmp(start_time, end_time) > 0) && (strcmp(start_time + 3, end_time + 3) > 0) &&
+		(strcmp(start_time + 6, end_time + 6) > 0)))
 	{
 		fprintf(stderr, "search video time: end time less than start time , input error.\n");	
 		return -1;
@@ -1380,8 +1308,7 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 	}
 	lseek(video_fd, tmp1.offset, SEEK_SET);
 	read(video_fd, &tmp2, tmp1.len);
-	printf("Iframe info: %02d:%02d:%02d %02x %02x ...\n", tmp2.rtc.stuRtcTime.cHour, 
-			tmp2.rtc.stuRtcTime.cMinute, tmp2.rtc.stuRtcTime.cSecond, tmp2.frame[0],tmp2.frame[1]);
+	print_valid_frame_data(&tmp2);
 
 	while (strcmp(buf, print_end_time) != 0)
 	{
@@ -1402,8 +1329,7 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 		}
 		lseek(video_fd, tmp1.offset, SEEK_SET);
 		read(video_fd, &tmp2, tmp1.len);
-		printf("Iframe info: %02d:%02d:%02d %02x %02x ...\n", tmp2.rtc.stuRtcTime.cHour, 
-			tmp2.rtc.stuRtcTime.cMinute, tmp2.rtc.stuRtcTime.cSecond, tmp2.frame[0],tmp2.frame[1]);
+		print_valid_frame_data(&tmp2);
 		convert_utc_to_localtime(&(tmp1.time), buf);
 	}
 
@@ -1413,8 +1339,7 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 		{
 			lseek(video_fd, tmp.offset, SEEK_SET);
 			read(video_fd, &tmp2, tmp.len);
-			printf("Iframe info: %02d:%02d:%02d %02x %02x ...\n", tmp2.rtc.stuRtcTime.cHour, 
-			tmp2.rtc.stuRtcTime.cMinute, tmp2.rtc.stuRtcTime.cSecond, tmp2.frame[0],tmp2.frame[1]);
+			print_valid_frame_data(&tmp2);
 		}
 		else
 		{
@@ -1460,8 +1385,7 @@ void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_end_ti
 			fprintf(stderr, "read tmp.h264 fail.\n");
 			goto end;
 		}
-		printf("Iframe info: %02d:%02d:%02d %02x %02x ...\n", tmp2.rtc.stuRtcTime.cHour, 
-				tmp2.rtc.stuRtcTime.cMinute, tmp2.rtc.stuRtcTime.cSecond, tmp2.frame[0],tmp2.frame[1]);
+		print_valid_frame_data(&tmp2);
 		convert_utc_to_localtime(&(tmp1.time), buf);
 	}
 
@@ -1471,8 +1395,7 @@ void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_end_ti
 		{
 			lseek(tmp_video_fd, tmp.offset, SEEK_SET);
 			read(tmp_video_fd, &tmp2, tmp.len);
-			printf("Iframe info: %02d:%02d:%02d %02x %02x ...\n", tmp2.rtc.stuRtcTime.cHour, 
-			tmp2.rtc.stuRtcTime.cMinute, tmp2.rtc.stuRtcTime.cSecond, tmp2.frame[0],tmp2.frame[1]);
+			print_valid_frame_data(&tmp2);
 		}
 		else
 		{
@@ -1485,6 +1408,20 @@ end:
 	close(tmp_index_fd);
 
 	return;
+}
+
+/* Print valid frame data. */
+void  print_valid_frame_data(FRAME_PACKET *packet)
+{
+	int i = 0;
+
+	printf("date::%02d:%02d:%02d\ndata::", packet->rtc.stuRtcTime.cHour, 
+									packet->rtc.stuRtcTime.cMinute, packet->rtc.stuRtcTime.cSecond);
+	for (; i < PRINT_NUM; i++)
+	{
+		printf("%02x ", packet->frame[i]);
+	}
+	printf("...\n");
 }
 
 /* Given one frame packet, then convert localtime to utc. */
@@ -1609,12 +1546,13 @@ void p4_log(int log_type, const char* format, ...)
     sprintf(buffer,"%04d-%02d-%02d %02d:%02d:%02d %s\n", local->tm_year+1900, local->tm_mon+1, local->tm_mday, local->tm_hour, local->tm_min, local->tm_sec, wrlog);  
 	if (log_type == 1)
 	{
-		sprintf(logpath, "./log/%02d%02d%02d-op.log", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);
+		//sprintf(logpath, "./log/%02d%02d%02d-op.log", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);
+		sprintf(logpath, "./log/operate.log");
 	}
     log_fp = fopen(logpath, "a+");  
 	if (log_fp == NULL)
 	{
-		perror("open op.log fail:");
+		perror("open operate.log fail:");
 		exit(EXIT_FAILURE);
 	}
     fwrite(buffer, 1, strlen(buffer), log_fp);  
@@ -1774,7 +1712,6 @@ void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, s
 		printf("start read_offset:%d\n", read_offset);
 		printf("***********************************************\n");
 	#endif 
-
 	for (;;)
 	{
 		int ret = -1;
@@ -1787,6 +1724,7 @@ void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, s
 			usleep(10000);
 			continue;
 		}
+
 		#ifdef DEBUG
 			printf("%d-%d-%d %d:%d:%d %d\n", newshmindex.time.year, newshmindex.time.month, 
 											 newshmindex.time.day , newshmindex.time.hour, 
@@ -1795,7 +1733,7 @@ void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, s
 			unsigned int read_pos = *((unsigned int*)shared_index_memory_start);
 			printf("read_pos:%d\n", read_pos);
 		#endif 
-	
+
 		ret = get_one_frame(shared_frame_memory_start, shared_frame_memory_end, &newshmindex, &packet1);
 		if (ret == -1)
 		{
@@ -1804,19 +1742,20 @@ void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, s
 		}
 
 		#ifdef DEBUG
-			printf("frame:%s\n", packet1.frame);
 			printf("%d-%d-%d %d:%d:%d\n", packet1.rtc.stuRtcTime.cYear, packet1.rtc.stuRtcTime.cMonth, 
 										  packet1.rtc.stuRtcTime.cDay, packet1.rtc.stuRtcTime.cHour, 
 			      						  packet1.rtc.stuRtcTime.cMinute,packet1.rtc.stuRtcTime.cSecond);
+			printf("frametype::%x\n", (unsigned int)packet1.head.IFrameType);
 		#endif 
 
 		storage_one_frame(shared_frame_memory_start, &newshmindex, &packet1);
-
+		{
 		#ifdef DEBUG
 			unsigned int read_offset = *((unsigned int*)shared_frame_memory_start);	
 			printf("read_offset:%d\n", read_offset);
 			printf("***********************************************\n");
 		#endif 
+		}
 	}
 	
 	return;

@@ -17,11 +17,13 @@
 
 //#define DEBUG 1
 
-#define FRAME_SIZE 1024
+#define FRAME_SIZE 1024*30
 #define SHM_INDEX_NUM 1024
+#define FRAME_START_FLAG	5
 
 #define CHANNEL_CNT		8
-#define SEG_TIME	1
+#define SEG_TIME	2
+#define PRINT_NUM	50
 
 #define PATH_LEN	255
 #define SEARCH_CHANNEL_DATE		10
@@ -105,7 +107,6 @@ typedef struct _tmp_fd
 
 static unsigned int flag; /* is or not search tmp.h264 */
 static unsigned int shm_read_offset; /* update share memory read_offset */
-
 static tmp_fd channel_tmp[CHANNEL_CNT];
 
 /* Open the file whose name is the string pointed to by path and associates a stream with it */
@@ -197,6 +198,9 @@ void print_iframe_info(const char* channel_date_path/*in*/, VIDEO_SEG_TIME *inde
 
 /* Print tmp.h264 information */
 void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_end_time/*in*/);
+
+/* Print valid frame data. */
+void print_valid_frame_data(FRAME_PACKET *packet);
 
 /* Take an argument of data  type  calendar time which represents time_t.
 On success returns time_t time; on error -1 is returned. */
