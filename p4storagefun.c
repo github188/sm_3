@@ -284,6 +284,7 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 		{
 			return -1;
 		}
+
 		ret = get_first_index_record(index_tmp_fd, &frecord);
 		if (ret == -1)
 		{
@@ -302,7 +303,15 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 		sprintf(index_name_buf, "%s/%02d-%02d%02d%02d-%s-%s.index", index_day_path, cshmindex->channel, 
 					cshmindex->time.year, cshmindex->time.month, cshmindex->time.day, startbuf, endbuf);
 
-		if ((lrecord.time != 0) && ((ctime-lrecord.time) > 2)) /* need to filter initialize record */
+		if (lrecord.time == 0)
+		{
+			printf("start storage the first Iframe\n");
+			write(video_tmp_fd, frame, cshmindex->lenth); 
+			get_current_index_record(video_tmp_fd, cshmindex, frame, &crecord);
+			put_current_index_record(index_tmp_fd, &crecord);
+			return 1;
+		}
+		if ((ctime-lrecord.time) > 2)
 		{
 			if ((access(video_tmp, F_OK))!=-1) 
 			{
@@ -333,45 +342,29 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 		else
 		{
 			INDEX_INFO lfrecord;
-			ret = get_last_index_record(index_tmp_fd, &lfrecord);
+			ret = get_last_front_index_record(index_tmp_fd, &lfrecord);
 			if (ret == -1)
 			{
 				return -1;
 			}
-
-			write(video_tmp_fd, frame, cshmindex->lenth); 
-			get_current_index_record(video_tmp_fd, cshmindex, frame, &crecord);
-			put_current_index_record(index_tmp_fd, &crecord);	
 
 			ret = get_first_index_record(index_tmp_fd, &frecord);
 			if (ret == -1)
 			{
 				return -1;
 			}
+			convert_utc_to_localtime(&frecord.time, startbuf);
+
 			ret = get_last_index_record(index_tmp_fd, &lrecord);
 			if (ret == -1)
 			{
 				return -1;
 			}
+			convert_utc_to_localtime(&lrecord.time, endbuf);
 
-			if ((lrecord.time != 0) && ((lrecord.time - frecord.time + 1) >= 3)) /* need to filter initialize record */
-			{
-				convert_utc_to_localtime(&lrecord.time, endbuf);
-				sprintf(video_name_buf, "%s/%02d-%02d%02d%02d-%s-%s.h264",
- 										video_day_path, cshmindex->channel, cshmindex->time.year, 
-										cshmindex->time.month, cshmindex->time.day, startbuf, endbuf);
-				sprintf(index_name_buf, "%s/%02d-%02d%02d%02d-%s-%s.index", 
-										index_day_path, cshmindex->channel, cshmindex->time.year,
- 										cshmindex->time.month, cshmindex->time.day, startbuf, endbuf);
-				close(video_tmp_fd);
-				close(index_tmp_fd);
-				rename(video_tmp, video_name_buf);
-				rename(index_tmp, index_name_buf);	
-				memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));
-				return 1;			
-			}
-			else if ((lrecord.time != 0) && ((lrecord.time - frecord.time + 2) >= 3) &&
-																	(lfrecord.time == lrecord.time))
+			get_current_index_record(video_tmp_fd, cshmindex, frame, &crecord);
+
+			if (((crecord.time - frecord.time) == 3) && (lfrecord.time == lrecord.time)) /*1224*/
 			{
 				lrecord.time = lrecord.time + 1; /* last index time equal front of last index time */
 				convert_utc_to_localtime(&lrecord.time, endbuf);
@@ -385,11 +378,52 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 				close(index_tmp_fd);
 				rename(video_tmp, video_name_buf);
 				rename(index_tmp, index_name_buf);	
+			
+				video_tmp_fd = open_tmp(video_tmp);
+				index_tmp_fd = open_tmp(index_tmp);	
+				init_index_tmp(index_tmp_fd);	
+				write(video_tmp_fd, frame, cshmindex->lenth); 
+				put_current_index_record(index_tmp_fd, &crecord);
+
+				memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));
+				return 1;			
+			}
+			else if ((crecord.time - frecord.time) == 3) /*1234*/			
+			{
+				close(video_tmp_fd);
+				close(index_tmp_fd);
+				rename(video_tmp, video_name_buf);
+				rename(index_tmp, index_name_buf);	
+			
+				video_tmp_fd = open_tmp(video_tmp);
+				index_tmp_fd = open_tmp(index_tmp);	
+				init_index_tmp(index_tmp_fd);	
+				write(video_tmp_fd, frame, cshmindex->lenth); 
+				put_current_index_record(index_tmp_fd, &crecord);
+
 				memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));
 				return 1;	
 			}
+			else if (((crecord.time - frecord.time + 1) == 3) && (lrecord.time == crecord.time)) /*1233*/
+			{	
+				write(video_tmp_fd, frame, cshmindex->lenth); 
+				put_current_index_record(index_tmp_fd, &crecord);
+				close(video_tmp_fd);
+				close(index_tmp_fd);
+				rename(video_tmp, video_name_buf);
+				rename(index_tmp, index_name_buf);	
+			
+				video_tmp_fd = open_tmp(video_tmp);
+				index_tmp_fd = open_tmp(index_tmp);	
+				init_index_tmp(index_tmp_fd);	
+
+				memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));
+				return 1;
+			}
 			else
 			{
+				write(video_tmp_fd, frame, cshmindex->lenth); 
+				put_current_index_record(index_tmp_fd, &crecord);
 				memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));
 				return 1;
 			}	
@@ -542,6 +576,33 @@ int get_last_index_record(int index_tmp_fd, INDEX_INFO *lrecord)
 	}
 		
 	return 1;
+}
+
+int get_last_front_index_record(int index_tmp_fd, INDEX_INFO *lfrecord)
+{
+	if (lfrecord == NULL)
+	{
+		fprintf(stderr, "get_last_index_record string error\n");
+		return;
+	}
+
+	int ret = -1;
+
+	ret = lseek(index_tmp_fd, -24, SEEK_END);
+	if (ret == -1)
+	{
+		perror("lseek the last front record position of the index tmp file fail:");
+		return -1;
+	}
+
+	ret = read(index_tmp_fd, lfrecord, sizeof(INDEX_INFO));
+	if (ret == -1)
+	{
+		perror("read the last front index record fail:");
+		return -1;
+	}
+		
+	return 1;	
 }
 
 void get_search_channel_date(char *channel_date_path, int size, FILE *file)
@@ -1071,6 +1132,14 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 		read(video_fd, &tmp2, tmp1.len);
 		printf("already read Iframe info: %#04X:%s\n", (unsigned int)tmp2.head.IFrameType, tmp2.frame);
 		convert_utc_to_localtime(&(tmp1.time), buf);
+	}
+
+	if (read(index_fd, &tmp1, sizeof(INDEX_INFO)) > 0)
+	{
+		lseek(video_fd, tmp1.offset, SEEK_SET);
+		read(video_fd, &tmp2, tmp1.len);
+		printf("occur two Iframes in the last second: %#04X:%s\n", 
+													(unsigned int)tmp2.head.IFrameType, tmp2.frame);
 	}
 
 end:

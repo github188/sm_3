@@ -134,6 +134,10 @@ int put_current_index_record(int index_tmp_fd, INDEX_INFO *crecord/*in-out*/);
 On success returns 1; on error -1 is returned. */
 int get_last_index_record(int index_tmp_fd, INDEX_INFO *lrecord/*in-out*/);
 
+/* Get last front record from the index file.
+On success returns 1; on error -1 is returned. */
+int get_last_front_index_record(int index_tmp_fd, INDEX_INFO *lfrecord/*in-out*/);
+
 /* Reads in at most one less than size characters from stream  and stores  
 them  into  the buffer pointed to by time or date, Reading stops after an 
 EOF or a newline, A '\0' is stored after the last character in the buffer */
