@@ -3,20 +3,20 @@
 
 #include "P4VEM_shm_index.h"
 
-//#define FRAME_SIZE 128*1024 
 #define FRAME_SIZE 12 
 #define PATH_LEN 64
+
 #define SEARCH_CHANNEL_DATE 10
 #define SEARCH_TIME 14
+
+#define SHM_HEAD_SIZE 8
 
 #define I_FRAME_TYPE	50
 #define P_FRAME_TYPE	51
 
 static int video_tmp_fd = -1;
 static int index_tmp_fd = -1;
-
-
-typedef unsigned char BYTE;
+unsigned int shm_read_offset;
 
 typedef struct _RMSTREAM_HEADER
 {
@@ -35,12 +35,12 @@ typedef struct _RMS_INFOTYPE
 
 typedef struct _RMS_DATETIME
 {
-	BYTE cYear;
-	BYTE cMonth;
-	BYTE cDay;
-	BYTE cHour;
-	BYTE cMinute;
-	BYTE cSecond;
+	unsigned char cYear;
+	unsigned char cMonth;
+	unsigned char cDay;
+	unsigned char cHour;
+	unsigned char cMinute;
+	unsigned char cSecond;
 	unsigned short usMilliSecond:10;
 	unsigned short usWeek:3;
 	unsigned short usReserved:2;
@@ -109,7 +109,7 @@ int get_one_shm_index(FILE *indexfp, P4VEM_ShMIndex_t *oldshmindex/*in*/, P4VEM_
 
 /* Get one frame data from share memory. 
 On success return fd; on error -1 is returned. */
-int get_one_frame(void *shared_memory_start/*in*/, P4VEM_ShMIndex_t *cshmindex/*in*/, FRAME_PACKET *frame/*in-out*/);
+int get_one_frame(void *shared_memory_start/*in*/, void *shared_memory_end/*in*/, P4VEM_ShMIndex_t *cshmindex/*in*/, FRAME_PACKET *frame/*in-out*/);
 
 /* Storage frame to disk or SD card.
 On success returns 1; on error -1 is returned. */
@@ -148,6 +148,9 @@ int search_time_check(char *time/*in*/, int size);
 /* Get the file name of all the video segment, then fill the VIDEO_SEG_TIME array.
 On success returns a pointer to a VIDEO_SEG_TIME array; on error NULL is returned. */
 VIDEO_SEG_TIME *fill_video_timeseg_array(const char* channel_date_path, int *video_seg_count/*in-out*/);
+
+/* Free VIDEO_SEG_TIME pointer of fill_video_timeseg_array returns*/
+void free_video_timeseg_array(VIDEO_SEG_TIME *timeseg/*in*/);
 
 /* Order the array of video segments from small to large, timeseg pointer from 
 fill_video_timeseg_array returns, left is 0, right is (video segment count - 1) */
