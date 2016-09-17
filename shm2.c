@@ -15,7 +15,7 @@ int main()
   int shmid;
   unsigned int cnt = 0;
 
-  unsigned int shm = sizeof(struct MEM_HEAD)+sizeof(FRAME_PACKET)*3;
+  unsigned int shm = sizeof(struct MEM_HEAD)+sizeof(FRAME_PACKET)*6;
   shmid = shmget((key_t)1234, shm, 0666 | IPC_CREAT);
   if (shmid == -1) 
   {
@@ -145,7 +145,7 @@ int main()
   		packet->rtc.stuRtcTime.cDay = 0x18;
   		packet->rtc.stuRtcTime.cHour = 0x0A;
   		packet->rtc.stuRtcTime.cMinute = 0x05;
-  		packet->rtc.stuRtcTime.cSecond = 0x0C;
+  		packet->rtc.stuRtcTime.cSecond = 0x0A;
   		packet->rtc.stuRtcTime.usMilliSecond = 0;
   		packet->rtc.stuRtcTime.usWeek = 2;
   		packet->rtc.stuRtcTime.usReserved = 0;
@@ -160,11 +160,135 @@ int main()
 		shm_index3.time.day = 0x18;
 		shm_index3.time.hour = 0x0A;
 		shm_index3.time.minute = 0x05;
-		shm_index3.time.second = 0x0C;
+		shm_index3.time.second = 0x0A;
 		shm_index3.offset = 0x08+88;
 		shm_index3.lenth = 0x2C;
 
 		write(fd, &shm_index3, sizeof(P4VEM_ShMIndex_t));
+
+		/*******************************Frame No.4********************************/
+		packet = (FRAME_PACKET *)((char *)packet + sizeof(FRAME_PACKET));
+		printf("%X\n", (int)packet);
+		packet->head.IFrameType = 0x63643200;
+  		packet->head.IFrameLen = 0x00000A;
+  		packet->head.ISreamExam = 0xD6;
+  		packet->head.IExtendLen = 0x000014;
+  		packet->head.IExtendCount = 0x02;
+		packet->video.stuInfoTYpe.LInfoType = 0x01;
+		packet->video.stuInfoTYpe.LInfoLength = 0x000008;
+		packet->video.IWidth = 0x280;
+		packet->video.IHeight = 0x140;
+		packet->video.IFPS = 0x1E;
+  		packet->rtc.stuInfoTYpe.LInfoType = 0x02;
+  		packet->rtc.stuInfoTYpe.LInfoLength = 0x00000C;
+  		//packet->rtc.stuRtcTime = 0x0800072808100810;
+  		packet->rtc.stuRtcTime.cYear = 0x10;
+  		packet->rtc.stuRtcTime.cMonth = 0x08;
+  		packet->rtc.stuRtcTime.cDay = 0x18;
+  		packet->rtc.stuRtcTime.cHour = 0x0A;
+  		packet->rtc.stuRtcTime.cMinute = 0x05;
+  		packet->rtc.stuRtcTime.cSecond = 0x0D;
+  		packet->rtc.stuRtcTime.usMilliSecond = 0;
+  		packet->rtc.stuRtcTime.usWeek = 2;
+  		packet->rtc.stuRtcTime.usReserved = 0;
+  		packet->rtc.stuRtcTime.usMilliValidate = 0;
+  		strncpy(packet->frame, "abcdefghijkl", 12);
+
+		P4VEM_ShMIndex_t shm_index4;
+		shm_index4.type = 0x32;
+		shm_index4.channel = 0x01;
+		shm_index4.time.year = 0x10;
+		shm_index4.time.month = 0x08;
+		shm_index4.time.day = 0x18;
+		shm_index4.time.hour = 0x0A;
+		shm_index4.time.minute = 0x05;
+		shm_index4.time.second = 0x0D;
+		shm_index4.offset = 0x08+132;
+		shm_index4.lenth = 0x2C;
+
+		write(fd, &shm_index4, sizeof(P4VEM_ShMIndex_t));
+		/*******************************Frame No.5********************************/
+		packet = (FRAME_PACKET *)((char *)packet + sizeof(FRAME_PACKET));
+		printf("%X\n", (int)packet);
+		packet->head.IFrameType = 0x63643200;
+  		packet->head.IFrameLen = 0x00000A;
+  		packet->head.ISreamExam = 0xD6;
+  		packet->head.IExtendLen = 0x000014;
+  		packet->head.IExtendCount = 0x02;
+		packet->video.stuInfoTYpe.LInfoType = 0x01;
+		packet->video.stuInfoTYpe.LInfoLength = 0x000008;
+		packet->video.IWidth = 0x280;
+		packet->video.IHeight = 0x140;
+		packet->video.IFPS = 0x1E;
+  		packet->rtc.stuInfoTYpe.LInfoType = 0x02;
+  		packet->rtc.stuInfoTYpe.LInfoLength = 0x00000C;
+  		//packet->rtc.stuRtcTime = 0x0800072808100810;
+  		packet->rtc.stuRtcTime.cYear = 0x10;
+  		packet->rtc.stuRtcTime.cMonth = 0x08;
+  		packet->rtc.stuRtcTime.cDay = 0x18;
+  		packet->rtc.stuRtcTime.cHour = 0x0A;
+  		packet->rtc.stuRtcTime.cMinute = 0x05;
+  		packet->rtc.stuRtcTime.cSecond = 0x0E;
+  		packet->rtc.stuRtcTime.usMilliSecond = 0;
+  		packet->rtc.stuRtcTime.usWeek = 2;
+  		packet->rtc.stuRtcTime.usReserved = 0;
+  		packet->rtc.stuRtcTime.usMilliValidate = 0;
+  		strncpy(packet->frame, "abcdefghijkl", 12);
+
+		P4VEM_ShMIndex_t shm_index5;
+		shm_index5.type = 0x32;
+		shm_index5.channel = 0x01;
+		shm_index5.time.year = 0x10;
+		shm_index5.time.month = 0x08;
+		shm_index5.time.day = 0x18;
+		shm_index5.time.hour = 0x0A;
+		shm_index5.time.minute = 0x05;
+		shm_index5.time.second = 0x0E;
+		shm_index5.offset = 0x08+176;
+		shm_index5.lenth = 0x2C;
+
+		write(fd, &shm_index5, sizeof(P4VEM_ShMIndex_t));
+		/*******************************Frame No.6********************************/
+		packet = (FRAME_PACKET *)((char *)packet + sizeof(FRAME_PACKET));
+		printf("%X\n", (int)packet);
+		packet->head.IFrameType = 0x63643200;
+  		packet->head.IFrameLen = 0x00000A;
+  		packet->head.ISreamExam = 0xD6;
+  		packet->head.IExtendLen = 0x000014;
+  		packet->head.IExtendCount = 0x02;
+		packet->video.stuInfoTYpe.LInfoType = 0x01;
+		packet->video.stuInfoTYpe.LInfoLength = 0x000008;
+		packet->video.IWidth = 0x280;
+		packet->video.IHeight = 0x140;
+		packet->video.IFPS = 0x1E;
+  		packet->rtc.stuInfoTYpe.LInfoType = 0x02;
+  		packet->rtc.stuInfoTYpe.LInfoLength = 0x00000C;
+  		//packet->rtc.stuRtcTime = 0x0800072808100810;
+  		packet->rtc.stuRtcTime.cYear = 0x10;
+  		packet->rtc.stuRtcTime.cMonth = 0x08;
+  		packet->rtc.stuRtcTime.cDay = 0x18;
+  		packet->rtc.stuRtcTime.cHour = 0x0A;
+  		packet->rtc.stuRtcTime.cMinute = 0x05;
+  		packet->rtc.stuRtcTime.cSecond = 0x12;
+  		packet->rtc.stuRtcTime.usMilliSecond = 0;
+  		packet->rtc.stuRtcTime.usWeek = 2;
+  		packet->rtc.stuRtcTime.usReserved = 0;
+  		packet->rtc.stuRtcTime.usMilliValidate = 0;
+  		strncpy(packet->frame, "abcdefghijkl", 12);
+
+		P4VEM_ShMIndex_t shm_index6;
+		shm_index6.type = 0x32;
+		shm_index6.channel = 0x01;
+		shm_index6.time.year = 0x10;
+		shm_index6.time.month = 0x08;
+		shm_index6.time.day = 0x18;
+		shm_index6.time.hour = 0x0A;
+		shm_index6.time.minute = 0x05;
+		shm_index6.time.second = 0x12;
+		shm_index6.offset = 0x08+220;
+		shm_index6.lenth = 0x2C;
+
+		write(fd, &shm_index6, sizeof(P4VEM_ShMIndex_t));
   }
 
 

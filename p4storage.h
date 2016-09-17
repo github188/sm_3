@@ -136,12 +136,12 @@ int get_last_index_record(int index_tmp_fd, INDEX_INFO *lrecord/*in-out*/);
 /* Reads in at most one less than size characters from stream  and stores  
 them  into  the buffer pointed to by time or date, Reading stops after an 
 EOF or a newline, A '\0' is stored after the last character in the buffer */
-void get_search_channel_date(char *date/*in-out*/, int size, FILE *file);
+void get_search_channel_date(char *channel_date_path/*in-out*/, int size, FILE *file);
 void get_search_time(char *time/*in-out*/, int size, FILE *file);
 
 /* Check video segment input date and time.
 On true returns 1; on false -1 is returned.*/
-int search_channel_date_check(char *date/*in*/, int size);
+int search_channel_date_check(char *channel_date_path/*in*/, int size);
 int search_time_check(char *time/*in*/, int size);
 
 /* Get the file name of all the video segment, then fill the VIDEO_SEG_TIME array.
@@ -154,11 +154,14 @@ void sort_video_timeseg_array(VIDEO_SEG_TIME timeseg[]/*in*/, int left, int righ
 
 /* check and update search video time follow the timeseg array, timeseg pointer from 
 fill_video_timeseg_array returns; update update_timeseg. */
-int check_search_video_time(VIDEO_SEG_TIME timeseg[]/*in*/, int video_seg_count, const char *time/*in*/, VIDEO_SEG_TIME* update_timeseg);
+int check_search_video_time(VIDEO_SEG_TIME timeseg[]/*in*/, int video_seg_count, const char *time/*in*/, VIDEO_SEG_TIME* update_timeseg/*in-out*/);
 
-/* Search video segment, if have, output to strout stream, then go back to terminal interface */
+/* Search video segment, if have, output to stdout stream, then go back to terminal interface */
 void output_search_video_info(const char* channel_date_path/*in*/, VIDEO_SEG_TIME timeseg[]/*in*/, 
 											int video_seg_count, VIDEO_SEG_TIME *update_timeseg/*in*/);
+
+/* Print Iframe information */
+void print_iframe_info(const char* channel_date_path/*in*/, VIDEO_SEG_TIME *index_video_seg/*in*/, char * print_start_time/*in*/, char *print_end_time/*in*/);
 
 /* Take an argument of data  type  calendar time which represents time_t.
 On success returns time_t time; on error -1 is returned. */
