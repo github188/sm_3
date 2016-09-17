@@ -15,15 +15,16 @@
 
 #include "P4VEM_shm_index.h"
 
-#define DEBUG 1
+//#define DEBUG 1
 
-#define FRAME_SIZE 12
+#define FRAME_SIZE 1024
+#define SHM_INDEX_NUM 1024
 
-#define PATH_LEN 64
+#define SEG_TIME 1
+
+#define PATH_LEN 255
 #define SEARCH_CHANNEL_DATE 10
 #define SEARCH_TIME 14
-
-#define SHM_INDEX_NUM 1024
 
 #define I_FRAME_TYPE	50
 #define P_FRAME_TYPE	51
@@ -32,8 +33,8 @@
 
 static int video_tmp_fd = -1; /* open tmp.h264 file description */
 static int index_tmp_fd = -1; /* open tmp.index file description */
-unsigned int flag; /* is or not search tmp.h264 */
-unsigned int shm_read_offset; /* update share memory read_offset */
+static unsigned int flag; /* is or not search tmp.h264 */
+static unsigned int shm_read_offset; /* update share memory read_offset */
 
 typedef struct _RMSTREAM_HEADER
 {
@@ -98,10 +99,6 @@ typedef struct _VIDEO_SEG_TIME
 	unsigned char start_time[7];
 	unsigned char end_time[7];	
 }VIDEO_SEG_TIME;
-
-/* Get share memory setment. On success getshm() returns 
-the address of the  attached  shared  memory segment; on error (void *) -1 is returned.*/
-void* get_shm(int key, int size);
 
 /* Open the file whose name is the string pointed to by path and associates a stream with it */
 FILE *open_shm_index(const char *path);
@@ -180,7 +177,8 @@ fill_video_timeseg_array returns; update update_timeseg. On true returns 1; on f
 int check_search_video_time(VIDEO_SEG_TIME timeseg[]/*in*/, int video_seg_count, const char *time/*in*/, VIDEO_SEG_TIME* update_timeseg/*in-out*/, int *flag/*in-out*/);
 
 /* Achieve to search the tmp video file. */
-void search_tmp_video_file(const char* channel_date_path/*in*/, VIDEO_SEG_TIME timeseg[], int video_seg_count, const char *time, int *flag);
+//void search_tmp_video_file(const char* channel_date_path/*in*/, VIDEO_SEG_TIME timeseg[], int video_seg_count, const char *time, int *flag);
+void search_tmp_video_file(const char* channel_date_path/*in*/, const char *time, int *flag);
 
 /* Search video segment, if have, output to stdout stream, then go back to terminal interface */
 void output_search_video_info(const char* channel_date_path/*in*/, VIDEO_SEG_TIME timeseg[]/*in*/, 
@@ -201,6 +199,12 @@ void convert_utc_to_localtime(const unsigned int *time, char *ltime/*in-out*/);
 
 /* Define log function. */
 void p4_log(int log_type, const char* format, ...);
+
+/* Terminal interaction of video search. */
+void p4_terminal(void);
+
+/* Video storage. */
+void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, size_t frame_mem_size);
 
 #endif /* p4storage.h */
 
