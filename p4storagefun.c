@@ -1296,17 +1296,36 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 			goto end;
 		}
 		convert_utc_to_localtime(&(tmp1.time), buf);
-		if (strcmp(buf, print_start_time) != 0)
-		{
-			continue;
-		}
-		else
+		//if (strcmp(buf, print_start_time) != 0)
+		//{
+		//	continue;
+		//}
+		//else
+		//{
+		//	#ifdef DEBUG
+		//		printf("already read print_start_time, begin output Iframe info.\n");
+		//	#endif
+		//	break;
+		//}
+		if (strcmp(buf, print_start_time) == 0)
 		{
 			#ifdef DEBUG
 				printf("already read print_start_time, begin output Iframe info.\n");
 			#endif
 			break;
 		}
+		if ((strcmp(buf, print_start_time) > 0))
+		{
+			if (strcmp(buf, print_end_time) > 0)
+			{
+				return; /* 084201-084201 (084201 no exist) */
+			}
+			#ifdef DEBUG
+				printf("print_start_time no exist, begin output Iframe info from next second.\n");
+			#endif
+			break;			
+		}
+		
 	}
 	lseek(video_fd, tmp1.offset, SEEK_SET);
 	read(video_fd, &tmp2, tmp1.len);
@@ -1331,13 +1350,22 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 		}
 		lseek(video_fd, tmp1.offset, SEEK_SET);
 		read(video_fd, &tmp2, tmp1.len);
-		print_valid_frame_data(&tmp2);
 		convert_utc_to_localtime(&(tmp1.time), buf);
+		if (strcmp(buf, print_end_time) > 0)
+		{
+			#ifdef DEBUG
+				printf("print_end_time no exist, end output Iframe info from front second.\n");
+			#endif			
+			break;
+		}
+		print_valid_frame_data(&tmp2);
+		//convert_utc_to_localtime(&(tmp1.time), buf);
 	}
 
 	if (read(index_fd, &tmp, sizeof(INDEX_INFO)) > 0) /* occur two Iframe in one second. */
 	{
-		if (tmp.time == tmp1.time)
+		convert_utc_to_localtime(&(tmp1.time), buf);
+		if ((tmp.time == tmp1.time) && (strcmp(buf, print_end_time) <= 0)) /* 084200-084201 (avoid print 084202) */
 		{
 			lseek(video_fd, tmp.offset, SEEK_SET);
 			read(video_fd, &tmp2, tmp.len);

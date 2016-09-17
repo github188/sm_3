@@ -12,18 +12,19 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <stdarg.h>
+#include <stdint.h>
 
 #include "P4VEM_shm_index.h"
 #include "p4show.h"
 
-//#define DEBUG 1
+#define DEBUG 1
 
 #define FRAME_SIZE 1024*30
 #define SHM_INDEX_NUM 1024
 #define FRAME_START_FLAG	5
 
 #define CHANNEL_CNT		8
-#define SEG_TIME	2
+#define SEG_TIME	10
 #define PRINT_NUM	50	/* print valid Iframe data count. */
 
 #define PATH_LEN	255
@@ -37,31 +38,31 @@
 
 typedef struct _RMSTREAM_HEADER
 {
-	unsigned long IFrameType;	
-	unsigned long IFrameLen:24; 
-	unsigned long ISreamExam:8;
-	unsigned long IExtendLen:24;
-	unsigned long IExtendCount:8;
+	uint32_t IFrameType;	
+	uint32_t IFrameLen:24; 
+	uint32_t ISreamExam:8;
+	uint32_t IExtendLen:24;
+	uint32_t IExtendCount:8;
 }RMSTREAM_HEADER;
 
 typedef struct _RMS_INFOTYPE
 {
-	unsigned long LInfoType:8;
-	unsigned long LInfoLength:24;
+	uint32_t LInfoType:8;
+	uint32_t LInfoLength:24;
 }RMS_INFOTYPE;
 
 typedef struct _RMS_DATETIME
 {
-	unsigned char cYear;
-	unsigned char cMonth;
-	unsigned char cDay;
-	unsigned char cHour;
-	unsigned char cMinute;
-	unsigned char cSecond;
-	unsigned short usMilliSecond:10;
-	unsigned short usWeek:3;
-	unsigned short usReserved:2;
-	unsigned short usMilliValidate:1;
+	uint8_t cYear;
+	uint8_t cMonth;
+	uint8_t cDay;
+	uint8_t cHour;
+	uint8_t cMinute;
+	uint8_t cSecond;
+	uint16_t usMilliSecond:10;
+	uint16_t usWeek:3;
+	uint16_t usReserved:2;
+	uint16_t usMilliValidate:1;
 }RMS_DATETIME;
 
 typedef struct _RMFI2_RTCTIME
@@ -73,9 +74,9 @@ typedef struct _RMFI2_RTCTIME
 typedef struct _RMFI2_VIDEOINFO
 {
 	RMS_INFOTYPE stuInfoTYpe;
-	unsigned long IWidth:12;
-	unsigned long IHeight:12;
-	unsigned long IFPS:8;
+	uint32_t IWidth:12;
+	uint32_t IHeight:12;
+	uint32_t IFPS:8;
 }RMFI2_VIDEOINFO;
 
 typedef struct _FRAME_PACKET
@@ -83,31 +84,31 @@ typedef struct _FRAME_PACKET
 	RMSTREAM_HEADER head; /* packaged head;£º12byte */
 	RMFI2_VIDEOINFO video; /* extended data£ºvideo info 8byte*/
 	RMFI2_RTCTIME rtc; /* extended data£ºRTC 12byte */
-	unsigned char frame[FRAME_SIZE]; /* storage video/audio array*/
+	uint8_t frame[FRAME_SIZE]; /* storage video/audio array*/
 }FRAME_PACKET;
 
 typedef struct _INDEX_INFO
 {
-	unsigned int time;
-	unsigned int offset;
-	unsigned int len;
+	uint32_t time;
+	uint32_t offset;
+	uint32_t len;
 }INDEX_INFO;
 
 typedef struct _VIDEO_SEG_TIME
 {
-	unsigned char start_time[7];
-	unsigned char end_time[7];	
+	uint8_t start_time[7];
+	uint8_t end_time[7];	
 }VIDEO_SEG_TIME;
 
 typedef struct _tmp_fd
 {
-	unsigned char channel;
-	int vt_fd;
-	int it_fd;
+	uint8_t channel;
+	int32_t vt_fd;
+	int32_t it_fd;
 }tmp_fd;
 
-static unsigned int flag; /* is or not search tmp.h264 */
-static unsigned int shm_read_offset; /* update share memory read_offset */
+static uint32_t flag; /* is or not search tmp.h264 */
+static uint32_t shm_read_offset; /* update share memory read_offset */
 static tmp_fd channel_tmp[CHANNEL_CNT];
 
 /* Open the file whose name is the string pointed to by path and associates a stream with it */
