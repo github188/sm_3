@@ -134,7 +134,7 @@ int main()
   		packet->rtc.stuRtcTime.cDay = 0x18;
   		packet->rtc.stuRtcTime.cHour = 0x0A;
   		packet->rtc.stuRtcTime.cMinute = 0x05;
-  		packet->rtc.stuRtcTime.cSecond = 0x0A;
+  		packet->rtc.stuRtcTime.cSecond = 0x09;
   		packet->rtc.stuRtcTime.usMilliSecond = 0;
   		packet->rtc.stuRtcTime.usWeek = 2;
   		packet->rtc.stuRtcTime.usReserved = 0;
@@ -149,7 +149,7 @@ int main()
 		shm_index3.time.day = 0x18;
 		shm_index3.time.hour = 0x0A;
 		shm_index3.time.minute = 0x05;
-		shm_index3.time.second = 0x0A;
+		shm_index3.time.second = 0x09;
 		shm_index3.offset = 0x08+76;
 		//shm_index3.offset = 0x08+44;
 		shm_index3.lenth = 0x2C;
@@ -177,7 +177,7 @@ int main()
   		packet->rtc.stuRtcTime.cDay = 0x18;
   		packet->rtc.stuRtcTime.cHour = 0x0A;
   		packet->rtc.stuRtcTime.cMinute = 0x05;
-  		packet->rtc.stuRtcTime.cSecond = 0x0D;
+  		packet->rtc.stuRtcTime.cSecond = 0x09;
   		packet->rtc.stuRtcTime.usMilliSecond = 0;
   		packet->rtc.stuRtcTime.usWeek = 2;
   		packet->rtc.stuRtcTime.usReserved = 0;
@@ -192,7 +192,7 @@ int main()
 		shm_index4.time.day = 0x18;
 		shm_index4.time.hour = 0x0A;
 		shm_index4.time.minute = 0x05;
-		shm_index4.time.second = 0x0D;
+		shm_index4.time.second = 0x09;
 		shm_index4.offset = 0x08+120;
 		//shm_index4.offset = 0x08+88;
 		shm_index4.lenth = 0x2C;
