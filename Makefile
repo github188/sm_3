@@ -12,7 +12,5 @@ clean:
 	rm *~ a.out *.o shm2 test -rf
 	rm /mnt/hgfs/share/shm_3 -rf
 	cp ../shm_3 /mnt/hgfs/share/ -rf
-	rm video/* -r
-	rm index/* -r
-	rm shmindex/shm.index 
-	ipcrm -M 0x4d2
+	rm video/* -rf
+	rm index/* -rf

@@ -20,16 +20,16 @@
 #define FRAME_SIZE 1024
 #define SHM_INDEX_NUM 1024
 
-#define SEG_TIME 1
+#define SEG_TIME	1
 
-#define PATH_LEN 255
-#define SEARCH_CHANNEL_DATE 10
-#define SEARCH_TIME 14
+#define PATH_LEN	255
+#define SEARCH_CHANNEL_DATE		10
+#define SEARCH_TIME		14
 
 #define I_FRAME_TYPE	50
 #define P_FRAME_TYPE	51
 
-#define RUN_LOG	1
+#define RUN_LOG		1
 
 static int video_tmp_fd = -1; /* open tmp.h264 file description */
 static int index_tmp_fd = -1; /* open tmp.index file description */
@@ -99,6 +99,13 @@ typedef struct _VIDEO_SEG_TIME
 	unsigned char start_time[7];
 	unsigned char end_time[7];	
 }VIDEO_SEG_TIME;
+
+typedef struct _tmp_fd
+{
+	unsigned char channel[2];
+	int vt_fd;
+	int it_fd;
+}tmp_fd;
 
 /* Open the file whose name is the string pointed to by path and associates a stream with it */
 FILE *open_shm_index(const char *path);
@@ -196,6 +203,10 @@ int convert_localtime_to_utc(FRAME_PACKET *packet/*in*/);
 
 /* Converts the calendar time  timep  to  broken-time  representation, */
 void convert_utc_to_localtime(const unsigned int *time, char *ltime/*in-out*/);
+
+/* List exist channel of video directory. 
+if exist channel video record ,returns channel count; or 0 returned*/
+int list_channel(void);
 
 /* Define log function. */
 void p4_log(int log_type, const char* format, ...);

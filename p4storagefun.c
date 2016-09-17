@@ -704,7 +704,7 @@ int search_channel_date_check(char *channel_date_path, int size)
 		{
 			if (!(c <= '9'&& c >= '0'))
 			{
-				fprintf(stderr, "Search channel and date input error: position at %d\nPlease input again.\n", cnt+1);
+				fprintf(stderr, "search channel and date input error: position at %d\nPlease input again.\n", cnt+1);
 				return -1;
 			}		
 		}
@@ -712,7 +712,7 @@ int search_channel_date_check(char *channel_date_path, int size)
 		{
 			if (channel_date_path[cnt] != '-')
 			{
-				fprintf(stderr, "Search channel and date input error: position at %d\nPlease input again\n", cnt+1);
+				fprintf(stderr, "search channel and date input error: position at %d\nPlease input again\n", cnt+1);
 				return -1;
 			}
 		}
@@ -720,7 +720,7 @@ int search_channel_date_check(char *channel_date_path, int size)
 		{
 			if (!(c <= '9'&& c >= '0'))
 			{
-				fprintf(stderr, "Search channel and date input error: position at %d\nPlease input again\n", cnt+1);
+				fprintf(stderr, "search channel and date input error: position at %d\nPlease input again\n", cnt+1);
 				return -1;
 			}					
 		}
@@ -735,7 +735,7 @@ int search_channel_date_check(char *channel_date_path, int size)
 	
 	if(!((year >= 16) && (month <= 12 && month >= 1) && (day <= 31 && day >= 1)))
 	{
-		fprintf(stderr, "Search date number error, Please input again.\n");
+		fprintf(stderr, "search date number error, Please input again.\n");
 		return -1;
 	}
 
@@ -785,7 +785,7 @@ int search_time_check(char *time, int size)
 		{
 			if (!(c <= '9'&& c >= '0'))
 			{
-				fprintf(stderr, "Search time input error: position at %d\nPlease input again\n", cnt+1);
+				fprintf(stderr, "search time input error: position at %d\nPlease input again\n", cnt+1);
 				return -1;
 			}		
 		}
@@ -793,7 +793,7 @@ int search_time_check(char *time, int size)
 		{
 			if (time[cnt] != '-')
 			{
-				fprintf(stderr, "Search time input error: position at %d\nPlease input again\n", cnt+1);
+				fprintf(stderr, "search time input error: position at %d\nPlease input again\n", cnt+1);
 				return -1;
 			}
 		}
@@ -801,7 +801,7 @@ int search_time_check(char *time, int size)
 		{
 			if (!(c <= '9'&& c >= '0'))
 			{
-				fprintf(stderr, "Search time input error: position at %d\nPlease input again\n", cnt+1);
+				fprintf(stderr, "search time input error: position at %d\nPlease input again\n", cnt+1);
 				return -1;
 			}					
 		}
@@ -824,7 +824,7 @@ int search_time_check(char *time, int size)
 		 (sminute >= 0 && sminute <= 59) && (eminute >= 0 && eminute <= 59) &&
 		 (ssecond >= 0 && ssecond <= 59) && (esecond >= 0 && esecond <= 59)))
 	{
-		fprintf(stderr, "Search time number error, Please input again\n");
+		fprintf(stderr, "search time number error, Please input again\n");
 		return -1;
 	}
 
@@ -855,7 +855,7 @@ VIDEO_SEG_TIME *fill_video_timeseg_array(const char* channel_date_path, int *vid
 	unsigned char channel[PATH_LEN] = {0};
 	unsigned char date[PATH_LEN] = {0};
 	
-	/* check channel and date directory is exist or no */
+	/* check channel and date directory exist or no */
 	sprintf(channel, "./video/%c%c", channel_date_path[0], channel_date_path[1]);
 	if ((access(channel, F_OK)) == -1) 
 	{
@@ -921,7 +921,6 @@ void free_video_timeseg_array(VIDEO_SEG_TIME *timeseg)
 	}
 	
 	free(timeseg);
-	timeseg = NULL;
 
 	return;
 }
@@ -1047,7 +1046,7 @@ void search_tmp_video_file(const char* channel_date_path, const char *time, int 
 		#ifdef DEBUG
 			printf("don't need search tmp.264.\n");
 		#endif
-		printf("search completed.\n");
+		printf("Search completed.\n");
 		return;
 	}
 	else
@@ -1121,7 +1120,7 @@ void search_tmp_video_file(const char* channel_date_path, const char *time, int 
 		/* output tmp.h264 from  index_start to index_end */
 		print_tmp_video_info(video_fd, index_fd, index_end);
 	}
-	printf("search completed.\n");
+	printf("Search completed.\n");
 	return;
 }
 
@@ -1152,9 +1151,9 @@ void output_search_video_info(const char* channel_date_path, VIDEO_SEG_TIME time
 				#ifdef DEBUG
 					printf("%s-%s\n", update_timeseg->start_time,  update_timeseg->end_time);
 				#endif
-				printf("***********************************************\n");
+				printf("***************************************************\n");
 				print_iframe_info(channel_date_path, &timeseg[i], update_timeseg->start_time, update_timeseg->end_time);
-				printf("***********************************************\n");		
+				printf("***************************************************\n");		
 				return;
 			}
 			else
@@ -1162,9 +1161,9 @@ void output_search_video_info(const char* channel_date_path, VIDEO_SEG_TIME time
 				#ifdef DEBUG
 					printf("%s-%s\n", update_timeseg->start_time, timeseg[i].end_time);	
 				#endif
-				printf("***********************************************\n");
+				printf("***************************************************\n");
 				print_iframe_info(channel_date_path, &timeseg[i], update_timeseg->start_time, timeseg[i].end_time);	
-				printf("***********************************************\n");
+				printf("***************************************************\n");
 				/* update search video time segment */
 				if (strcmp(timeseg[i+1].start_time, update_timeseg->end_time) <= 0)
 				{
@@ -1186,9 +1185,9 @@ void output_search_video_info(const char* channel_date_path, VIDEO_SEG_TIME time
 					#ifdef DEBUG
 						printf("%s-%s\n", timeseg[i].start_time, update_timeseg->end_time);	
 					#endif
-					printf("***********************************************\n");
+					printf("*******************************************************\n");
 					print_iframe_info(channel_date_path, &timeseg[i], timeseg[i].start_time, update_timeseg->end_time);	
-					printf("***********************************************\n");	
+					printf("*******************************************************\n");	
 					return;
 				}
 				else
@@ -1196,9 +1195,9 @@ void output_search_video_info(const char* channel_date_path, VIDEO_SEG_TIME time
 					#ifdef DEBUG
 						printf("%s-%s\n", timeseg[i].start_time, timeseg[i].end_time);	
 					#endif	
-					printf("***********************************************\n");
+					printf("*******************************************************\n");
 					print_iframe_info(channel_date_path, &timeseg[i], timeseg[i].start_time, timeseg[i].end_time);	
-					printf("***********************************************\n");
+					printf("*******************************************************\n");
 					/* update search video time segment */
 					if (strcmp(timeseg[i+1].start_time, update_timeseg->end_time) <= 0)
 					{
@@ -1241,6 +1240,7 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 	index_fd = open_tmp(index);
 	video_fd = open_tmp(video);
 	lseek(index_fd, sizeof(INDEX_INFO), SEEK_SET);
+
 	/* find print_start_time position */
 	for (;;)
 	{
@@ -1272,7 +1272,7 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 	read(video_fd, &tmp2, tmp1.len);
 	printf("Iframe info: %02d:%02d:%02d %02x %02x ...\n", tmp2.rtc.stuRtcTime.cHour, 
 			tmp2.rtc.stuRtcTime.cMinute, tmp2.rtc.stuRtcTime.cSecond, tmp2.frame[0],tmp2.frame[1]);
-	//printf("Iframe info: %d %s\n", tmp1.time, tmp2.frame);
+
 	while (strcmp(buf, print_end_time) != 0)
 	{
 		memset(&tmp1, 0, sizeof(INDEX_INFO));
@@ -1349,10 +1349,10 @@ void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_end_ti
 			fprintf(stderr, "read tmp.h264 fail.\n");
 			goto end;
 		}
-		printf("***********************************************\n");
+		printf("*******************************************************\n");
 		printf("Iframe info: %02d:%02d:%02d %02x %02x ...\n", tmp2.rtc.stuRtcTime.cHour, 
 				tmp2.rtc.stuRtcTime.cMinute, tmp2.rtc.stuRtcTime.cSecond, tmp2.frame[0],tmp2.frame[1]);
-		printf("***********************************************\n");
+		printf("*******************************************************\n");
 		convert_utc_to_localtime(&(tmp1.time), buf);
 	}
 
@@ -1362,10 +1362,10 @@ void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_end_ti
 		{
 			lseek(tmp_video_fd, tmp.offset, SEEK_SET);
 			read(tmp_video_fd, &tmp2, tmp.len);
-			printf("***********************************************\n");
+			printf("*******************************************************\n");
 			printf("Iframe info: %02d:%02d:%02d %02x %02x ...\n", tmp2.rtc.stuRtcTime.cHour, 
 			tmp2.rtc.stuRtcTime.cMinute, tmp2.rtc.stuRtcTime.cSecond, tmp2.frame[0],tmp2.frame[1]);
-			printf("***********************************************\n");
+			printf("*******************************************************\n");
 		}
 		else
 		{
@@ -1430,6 +1430,52 @@ void convert_utc_to_localtime(const unsigned int *time, char *ltime)
 	return;
 }
 
+/* List exist channel before search video segment. */
+int list_channel(void)
+{
+	char cnt = 0;
+	char *ret = NULL;
+	DIR * dir = NULL;
+	struct dirent * ptr = NULL;
+	char video[8] = {0};
+	char channel_0x[2] = {0};
+
+	sprintf(video, "./video");
+	sprintf(channel_0x, "0");
+
+	dir = opendir(video);
+	while((ptr = readdir(dir)) != NULL)
+	{
+		ret = strstr(ptr->d_name, channel_0x);
+		if (ret != 0)
+		{
+			cnt++;
+		}
+	}
+	if (cnt == 0)
+	{
+		printf("No channel video recording.\n");
+		return cnt;
+	}
+	else
+	{
+		printf("#####exist the following channel video recording#####\n");
+	}
+	seekdir(dir, 0);
+	while((ptr = readdir(dir)) != NULL)
+	{
+		ret = strstr(ptr->d_name, channel_0x);
+		if (ret != 0)
+		{
+			printf("%s\t", ptr->d_name);
+		}
+	}
+	printf("\n");
+	printf("#######exist the above channel video recording#######\n");
+
+	return cnt;
+}
+
 /* Define log function. */
 void p4_log(int log_type, const char* format, ...)  
 {  
@@ -1478,62 +1524,65 @@ void p4_terminal(void)
 	char date[SEARCH_CHANNEL_DATE] = {0};
 	char time[SEARCH_TIME] = {0};
 
-	for (;;)
+	while(1)
 	{
-		get_search_channel_date(date,sizeof(date), stdin);
-		ret = search_channel_date_check(date, sizeof(date));
-		if (ret == -1 )
+		for (;;)
 		{
-			continue;
+			list_channel();
+			get_search_channel_date(date,sizeof(date), stdin);
+			ret = search_channel_date_check(date, sizeof(date));
+			if (ret == -1 )
+			{
+				continue;
+			}
+			else
+			{
+				printf("You input channel-date is:%s\n", date);
+				break;
+			}		
 		}
-		else
-		{
-			printf("You input channel-date is:%s\n", date);
-			break;
-		}		
-	}
 
-	p = fill_video_timeseg_array(date, &cnt);
-	sort_video_timeseg_array(p, 0, cnt-1);
-	printf("=========exist the following video segments=========\n");
-	for (i=0; i<cnt; i++)
-	{
-		printf("\t\t%s-%s\n", p[i].start_time, p[i].end_time);
-	}
-	printf("=========exist the above video segments=============\n");
-	for (;;)
-	{
-		get_search_time(time,sizeof(time), stdin);
-		int ret = search_time_check(time, sizeof(time));
-		if (ret == -1 )
+		p = fill_video_timeseg_array(date, &cnt);
+		sort_video_timeseg_array(p, 0, cnt-1);
+		printf("***********exist the following video segments************\n");
+		for (i=0; i<cnt; i++)
 		{
-			continue;
+			printf("*\t\t\t%s-%s\t\t\t*\n", p[i].start_time, p[i].end_time);
 		}
-		else
+		printf("*************exist the above video segments**************\n");
+		for (;;)
 		{
-			printf("You input time is:%s\n", time);
-			break;
+			get_search_time(time,sizeof(time), stdin);
+			int ret = search_time_check(time, sizeof(time));
+			if (ret == -1 )
+			{
+				continue;
+			}
+			else
+			{
+				printf("You input time is:%s\n", time);
+				break;
+			}
 		}
-	}
 
-	#ifdef DEBUG
-		printf("================update_search_video_time==============\n");
-	#endif
-	memset(&update_timeseg, 0, sizeof(update_timeseg));
-	ret = check_search_video_time(p, cnt, time, &update_timeseg, &flag);
-	#ifdef DEBUG
-		if (ret == 1)
-		{
-			printf("update time is::%s-%s\ntmp.h264 flag is::%d\n",update_timeseg.start_time, 
-																   update_timeseg.end_time, flag);
-		}
-		printf("================output_search_video_info==============\n");
-	#endif
-	output_search_video_info(date, p, cnt, &update_timeseg);
-	search_tmp_video_file(date, time, &flag);
-	free_video_timeseg_array(p);
-	
-	return;
+		#ifdef DEBUG
+			printf("***************update_search_video_time**************\n");
+		#endif
+		memset(&update_timeseg, 0, sizeof(update_timeseg));
+		ret = check_search_video_time(p, cnt, time, &update_timeseg, &flag);
+		#ifdef DEBUG
+			if (ret == 1)
+			{
+				printf("update time is::%s-%s\ntmp.h264 flag is::%d\n",update_timeseg.start_time, 
+																   		update_timeseg.end_time, flag);
+			}
+			printf("***************output_search_video_info***************\n");
+		#endif
+		output_search_video_info(date, p, cnt, &update_timeseg);
+		search_tmp_video_file(date, time, &flag);
+		free_video_timeseg_array(p);
+		printf("\n");
+	}
 }
 
 void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, size_t frame_mem_size)
@@ -1542,7 +1591,6 @@ void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, s
 	int shmid1 = -1;
     int shmid2 = -1;
 	unsigned int cnt = 0;
-	P4VEM_ShMIndex_t newshmindex = {0};
     FRAME_PACKET *packet = NULL;
     P4VEM_ShMIndex_t *index = NULL;
     P4VEM_ShM_DAT_HEAD_t *frame_head = NULL;
@@ -1569,7 +1617,7 @@ void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, s
     shared_index_memory_end = shared_index_memory_start + index_mem_size;
 	
 	#ifdef DEBUG
-		printf("===============================================\n");
+		printf("***********************************************\n");
     	printf("index memory attached at %X\n", (int)shared_index_memory_start);
    		printf("index memory end at %X\n", (int)shared_index_memory_end);
 	#endif  
@@ -1599,7 +1647,7 @@ void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, s
     index = (P4VEM_ShMIndex_t *)(shared_index_memory_start + sizeof(P4VEM_ShM_IND_HEAD_t));
     
 	#ifdef DEBUG
-		printf("===============================================\n");
+		printf("***********************************************\n");
 		printf("current write_pos::%d\n", index_head->write_pos); 
 		P4VEM_ShMIndex_t shm_index = {0};
 		for (i = 0; i < 6; i++)
@@ -1612,13 +1660,14 @@ void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, s
 		unsigned int read_offset = *((unsigned int*)shared_frame_memory_start);	
 		printf("start read_pos:%d\n", read_pos);
 		printf("start read_offset:%d\n", read_offset);
-		printf("===============================================\n");
+		printf("***********************************************\n");
 	#endif 
 
 	for (;;)
 	{
 		int ret = -1;
 		FRAME_PACKET packet1 = {0};
+		P4VEM_ShMIndex_t newshmindex = {0};
 
 		ret = get_one_index(shared_index_memory_start, &newshmindex);
 		if (ret == -1)
@@ -1635,7 +1684,6 @@ void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, s
 			printf("read_pos:%d\n", read_pos);
 		#endif 
 	
-		memset(&packet1, 0, sizeof(FRAME_PACKET));
 		ret = get_one_frame(shared_frame_memory_start, shared_frame_memory_end, &newshmindex, &packet1);
 		if (ret == -1)
 		{
@@ -1655,7 +1703,7 @@ void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, s
 		#ifdef DEBUG
 			unsigned int read_offset = *((unsigned int*)shared_frame_memory_start);	
 			printf("read_offset:%d\n", read_offset);
-			printf("===============================================\n");
+			printf("***********************************************\n");
 		#endif 
 	}
 	
