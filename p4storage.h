@@ -6,6 +6,8 @@
 //#define FRAME_SIZE 128*1024 
 #define FRAME_SIZE 12 
 #define PATH_LEN 64
+#define SEARCH_CHANNEL_DATE 10
+#define SEARCH_TIME 14
 
 #define I_FRAME_TYPE	50
 #define P_FRAME_TYPE	51
@@ -75,7 +77,8 @@ typedef struct _INDEX_INFO
 
 typedef struct _VIDEO_SEG_TIME
 {
-	unsigned int time;	
+	unsigned char start_time[7];
+	unsigned char end_time[7];	
 }VIDEO_SEG_TIME;
 
 struct MEM_HEAD
@@ -91,8 +94,9 @@ void* get_shm(int key, int size);
 /* Open the file whose name is the string pointed to by path and associates a stream with it */
 FILE *open_shm_index(const char *path);
 
-/* Flushes the stream pointed to by fp and closes  the  underlying  file descriptor. */
-void close_shm_index(FILE *indexfp);
+/* Flushes the stream pointed to by fp and closes  the  underlying  file descriptor. 
+On success returns 1; on error -1 is returned. */
+int close_shm_index(FILE *indexfp);
 
 /* If tmp file  exist of video or index, open it; Otherwise create tmp file ,then open it.
 On success return fd; on error -1 is returned. */
@@ -102,12 +106,13 @@ int open_tmp(const char* tmpstring);
 equal return 0; otherwise, -1 returned. */
 int get_one_shm_index(FILE *indexfp, P4VEM_ShMIndex_t *oldshmindex/*in*/, P4VEM_ShMIndex_t *newshmindex/*in-out*/);
 
-/* Get one frame data from share memory. */
-void get_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex/*in*/, FRAME_PACKET *frame/*in-out*/);
+/* Get one frame data from share memory. 
+On success return fd; on error -1 is returned. */
+int get_one_frame(void *shared_memory_start/*in*/, P4VEM_ShMIndex_t *cshmindex/*in*/, FRAME_PACKET *frame/*in-out*/);
 
 /* Storage frame to disk or SD card.
 On success returns 1; on error -1 is returned. */
-int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex/*in*/, FRAME_PACKET *frame/*in*/);
+int storage_one_frame(void *shared_memory_start/*in*/, P4VEM_ShMIndex_t *cshmindex/*in*/, FRAME_PACKET *frame/*in*/);
 
 /* initialize the index tmp file. */
 void init_index_tmp(int index_tmp_fd);
@@ -128,23 +133,39 @@ int put_current_index_record(int index_tmp_fd, INDEX_INFO *crecord/*in-out*/);
 On success returns 1; on error -1 is returned. */
 int get_last_index_record(int index_tmp_fd, INDEX_INFO *lrecord/*in-out*/);
 
-/* Get the file name of all the video segment, then fill the VIDEO_SEG_TIME array;
-On success returns 1; on error -1 is returned. */
-int fill_video_timeseg_array(const char* path, VIDEO_SEG_TIME timeseg[]);
+/* Reads in at most one less than size characters from stream  and stores  
+them  into  the buffer pointed to by time or date, Reading stops after an 
+EOF or a newline, A '\0' is stored after the last character in the buffer */
+void get_search_channel_date(char *date/*in-out*/, int size, FILE *file);
+void get_search_time(char *time/*in-out*/, int size, FILE *file);
 
-/* Order the array of video segments from small to large */
-void sort_video_timeseg_array(VIDEO_SEG_TIME timeseg[], int left, int right);
+/* Check video segment input date and time.
+On true returns 1; on false -1 is returned.*/
+int search_channel_date_check(char *date/*in*/, int size);
+int search_time_check(char *time/*in*/, int size);
 
-/* Search video time in the timeseg array
-On success returns the array subscript; on error -1 is returned. */
-int search_video_time_array(VIDEO_SEG_TIME timeseg[], VIDEO_SEG_TIME time);
+/* Get the file name of all the video segment, then fill the VIDEO_SEG_TIME array.
+On success returns a pointer to a VIDEO_SEG_TIME array; on error NULL is returned. */
+VIDEO_SEG_TIME *fill_video_timeseg_array(const char* channel_date_path, int *video_seg_count/*in-out*/);
+
+/* Order the array of video segments from small to large, timeseg pointer from 
+fill_video_timeseg_array returns, left is 0, right is (video segment count - 1) */
+void sort_video_timeseg_array(VIDEO_SEG_TIME timeseg[]/*in*/, int left, int right);
+
+/* check and update search video time follow the timeseg array, timeseg pointer from 
+fill_video_timeseg_array returns; update update_timeseg. */
+int check_search_video_time(VIDEO_SEG_TIME timeseg[]/*in*/, int video_seg_count, const char *time/*in*/, VIDEO_SEG_TIME* update_timeseg);
+
+/* Search video segment, if have, output to strout stream, then go back to terminal interface */
+void output_search_video_info(const char* channel_date_path/*in*/, VIDEO_SEG_TIME timeseg[]/*in*/, 
+											int video_seg_count, VIDEO_SEG_TIME *update_timeseg/*in*/);
 
 /* Take an argument of data  type  calendar time which represents time_t.
 On success returns time_t time; on error -1 is returned. */
-int convert_localtime_to_utc(FRAME_PACKET *packet);
+int convert_localtime_to_utc(FRAME_PACKET *packet/*in*/);
 
 /* Converts the calendar time  timep  to  broken-time  representation, */
-void convert_utc_to_localtime(const unsigned int *time/*in*/, char *ltime/*in-out*/);
+void convert_utc_to_localtime(const unsigned int *time, char *ltime/*in-out*/);
 
 #endif /* p4storage.h */
 
