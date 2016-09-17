@@ -20,7 +20,7 @@
 #define FRAME_SIZE 1024
 #define SHM_INDEX_NUM 1024
 
-#define SEG_TIME	1
+#define SEG_TIME	2
 
 #define PATH_LEN	255
 #define SEARCH_CHANNEL_DATE		10
