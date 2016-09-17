@@ -1,18 +1,34 @@
 #ifndef _P4STORAGE_H
 #define _P4STORAGE_H 1
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/shm.h>
+#include <sys/types.h>
+#include <error.h>
+#include <string.h>
+#include <unistd.h>
+#include <time.h>
+#include <fcntl.h>
+#include <dirent.h>
+#include <stdarg.h>
+
 #include "P4VEM_shm_index.h"
 
-#define FRAME_SIZE 12 
-#define PATH_LEN 64
+#define DEBUG 1
 
+#define FRAME_SIZE 12
+
+#define PATH_LEN 64
 #define SEARCH_CHANNEL_DATE 10
 #define SEARCH_TIME 14
 
-#define SHM_HEAD_SIZE 8
+#define SHM_INDEX_NUM 1024
 
 #define I_FRAME_TYPE	50
 #define P_FRAME_TYPE	51
+
+#define RUN_LOG	1
 
 static int video_tmp_fd = -1; /* open tmp.h264 file description */
 static int index_tmp_fd = -1; /* open tmp.index file description */
@@ -83,12 +99,6 @@ typedef struct _VIDEO_SEG_TIME
 	unsigned char end_time[7];	
 }VIDEO_SEG_TIME;
 
-struct MEM_HEAD
-{
-	uint32_t read_offset; 
-	uint32_t write_offset;
-};
-
 /* Get share memory setment. On success getshm() returns 
 the address of the  attached  shared  memory segment; on error (void *) -1 is returned.*/
 void* get_shm(int key, int size);
@@ -107,6 +117,10 @@ int open_tmp(const char* tmpstring);
 /* Get one record from shm index file, and compares with oldshmindex.
 equal return 0; otherwise, -1 returned. */
 int get_one_shm_index(FILE *indexfp, P4VEM_ShMIndex_t *oldshmindex/*in*/, P4VEM_ShMIndex_t *newshmindex/*in-out*/);
+
+/* Acquire one index record from share memory.
+On success returns 1; on error -1 is returned. */
+int get_one_index(void *shared_index_memory_start/*in*/, P4VEM_ShMIndex_t *newshmindex/*in-out*/);
 
 /* Get one frame data from share memory. 
 On success return fd; on error -1 is returned. */
@@ -184,6 +198,9 @@ int convert_localtime_to_utc(FRAME_PACKET *packet/*in*/);
 
 /* Converts the calendar time  timep  to  broken-time  representation, */
 void convert_utc_to_localtime(const unsigned int *time, char *ltime/*in-out*/);
+
+/* Define log function. */
+void p4_log(int log_type, const char* format, ...);
 
 #endif /* p4storage.h */
 
