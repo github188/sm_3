@@ -14,5 +14,3 @@ clean:
 	cp ../shm_3 /mnt/hgfs/share/ -rf
 	rm video/* -rf
 	rm index/* -rf
-	#ipcrm -M 0x162e
-	#ipcrm -M 0x4d2

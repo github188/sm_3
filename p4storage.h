@@ -14,6 +14,7 @@
 #include <stdarg.h>
 
 #include "P4VEM_shm_index.h"
+#include "p4show.h"
 
 //#define DEBUG 1
 
@@ -23,7 +24,7 @@
 
 #define CHANNEL_CNT		8
 #define SEG_TIME	2
-#define PRINT_NUM	50
+#define PRINT_NUM	50	/* print valid Iframe data count. */
 
 #define PATH_LEN	255
 #define SEARCH_CHANNEL_DATE		10
