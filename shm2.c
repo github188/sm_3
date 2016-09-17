@@ -264,7 +264,7 @@ int main()
 		//*******************************IFrame No.5********************************
 		packet = (FRAME_PACKET *)((char *)packet + 32);
 		printf("%X\n", (int)packet);
-		packet->head.IFrameType = 0x63643200;
+		packet->head.IFrameType = 0x63643201; //channel 2
   		packet->head.IFrameLen = 0x00000A;
   		packet->head.ISreamExam = 0xD6;
   		packet->head.IExtendLen = 0x000014;
@@ -291,7 +291,7 @@ int main()
 
 		P4VEM_ShMIndex_t shm_index5;
 		shm_index5.type = 0x32;
-		shm_index5.channel = 0x01;
+		shm_index5.channel = 0x02; //channel 2
 		shm_index5.time.year = 0x10;
 		shm_index5.time.month = 0x08;
 		shm_index5.time.day = 0x18;

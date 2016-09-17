@@ -20,7 +20,8 @@
 #define FRAME_SIZE 1024
 #define SHM_INDEX_NUM 1024
 
-#define SEG_TIME	2
+#define CHANNEL_CNT		8
+#define SEG_TIME	1
 
 #define PATH_LEN	255
 #define SEARCH_CHANNEL_DATE		10
@@ -30,11 +31,6 @@
 #define P_FRAME_TYPE	51
 
 #define RUN_LOG		1
-
-static int video_tmp_fd = -1; /* open tmp.h264 file description */
-static int index_tmp_fd = -1; /* open tmp.index file description */
-static unsigned int flag; /* is or not search tmp.h264 */
-static unsigned int shm_read_offset; /* update share memory read_offset */
 
 typedef struct _RMSTREAM_HEADER
 {
@@ -102,10 +98,15 @@ typedef struct _VIDEO_SEG_TIME
 
 typedef struct _tmp_fd
 {
-	unsigned char channel[2];
+	unsigned char channel;
 	int vt_fd;
 	int it_fd;
 }tmp_fd;
+
+static unsigned int flag; /* is or not search tmp.h264 */
+static unsigned int shm_read_offset; /* update share memory read_offset */
+
+static tmp_fd channel_tmp[CHANNEL_CNT];
 
 /* Open the file whose name is the string pointed to by path and associates a stream with it */
 FILE *open_shm_index(const char *path);
@@ -181,11 +182,11 @@ void sort_video_timeseg_array(VIDEO_SEG_TIME timeseg[]/*in*/, int left, int righ
 
 /* check and update search video time follow the timeseg array, timeseg pointer from 
 fill_video_timeseg_array returns; update update_timeseg. On true returns 1; on false -1 is returned. */
-int check_search_video_time(VIDEO_SEG_TIME timeseg[]/*in*/, int video_seg_count, const char *time/*in*/, VIDEO_SEG_TIME* update_timeseg/*in-out*/, int *flag/*in-out*/);
+int check_search_video_time(VIDEO_SEG_TIME timeseg[]/*in*/, int video_seg_count, const char *time/*in*/, VIDEO_SEG_TIME* update_timeseg/*in-out*/);
 
 /* Achieve to search the tmp video file. */
 //void search_tmp_video_file(const char* channel_date_path/*in*/, VIDEO_SEG_TIME timeseg[], int video_seg_count, const char *time, int *flag);
-void search_tmp_video_file(const char* channel_date_path/*in*/, const char *time, int *flag);
+void search_tmp_video_file(const char* channel_date_path/*in*/, const char *time);
 
 /* Search video segment, if have, output to stdout stream, then go back to terminal interface */
 void output_search_video_info(const char* channel_date_path/*in*/, VIDEO_SEG_TIME timeseg[]/*in*/, 
