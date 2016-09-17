@@ -120,8 +120,21 @@ int get_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FRAME_
 		fprintf(stderr, "get_one_frame string error\n");
 		return -1;
 	}	
-
-	memcpy(frame, shared_memory_start+cshmindex->offset, cshmindex->lenth);	
+	
+	if (cshmindex->type == P_FRAME_TYPE)
+	{
+		unsigned int tmp1 = sizeof(RMSTREAM_HEADER) + sizeof(RMFI2_VIDEOINFO);
+		unsigned int tmp2 = sizeof(RMFI2_RTCTIME);
+		unsigned int tmp3 = tmp1 + tmp2;
+		memcpy(frame, shared_memory_start + cshmindex->offset, tmp1);
+		memcpy((void*)frame + tmp3, shared_memory_start + cshmindex->offset + tmp1, cshmindex->lenth - tmp1);
+		//printf("Pframe:%s\n", frame->frame);
+	}
+	else
+	{
+		memcpy(frame, shared_memory_start + cshmindex->offset, cshmindex->lenth);	
+		//printf("Iframe:%04x\n", (unsigned int)frame->head.IFrameType);
+	}
 
 	return 1;
 }
@@ -154,57 +167,9 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 	                         cshmindex->time.year, cshmindex->time.month, cshmindex->time.day);
 	sprintf(index_tmp, "%s/tmp.index", index_day_path,
 	                         cshmindex->time.year, cshmindex->time.month, cshmindex->time.day);
-	
-	if ((access(video_channel_path, F_OK)) != -1)  
-    {  
-        printf("video channel directory exist.\n");  
-    }  
-    else  
-    {  
-        printf("video channel directory is not exist, create directory.\n");  
-		mkdir(video_channel_path, 0777);
-		mkdir(video_day_path, 0777);
-		mkdir(index_channel_path, 0777);
-		mkdir(index_day_path, 0777);
-		video_tmp_fd = open_tmp(video_tmp);
-		index_tmp_fd = open_tmp(index_tmp);
-		init_index_tmp(index_tmp_fd);
-    } 	
-
-	if ((access(video_day_path, F_OK)) != -1)  
-    {  
-        printf("video data directory exist.\n");  
-    }  		
-	else
-	{
-        printf("video data directory is not exist, create directory.\n");  
-		mkdir(video_day_path, 0777);
-		mkdir(index_day_path, 0777);	
-		video_tmp_fd = open_tmp(video_tmp);
-		index_tmp_fd = open_tmp(index_tmp);	
-		init_index_tmp(index_tmp_fd);
-	}
-	
-	if ((access(video_tmp, F_OK)) != -1)  
-    {  
-        printf("video tmp file exist.\n");  
-    }  		
-	else
-	{
-		if (cshmindex->type == P_FRAME_TYPE)
-		{
-			return 1;
-		}
-		else
-		{
-			video_tmp_fd = open_tmp(video_tmp);
-			index_tmp_fd = open_tmp(index_tmp);	
-			init_index_tmp(index_tmp_fd);			
-		}
-	}
-
+		
 	/* read_offset points next frame */
-	shm_read_offset = cshmindex->offset + cshmindex->lenth + 1;
+	shm_read_offset = cshmindex->offset + cshmindex->lenth;
 
 	if (cshmindex->type == I_FRAME_TYPE)
 	{
@@ -218,6 +183,54 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 		char endbuf[7] = {0};
 		char video_name_buf[64] = {0};
 		char index_name_buf[64] = {0};
+
+		if ((access(video_channel_path, F_OK)) != -1)  
+    	{  
+       		printf("video channel directory exist.\n");  
+    	}  
+    	else  
+   		{  
+        	printf("video channel directory is not exist, create directory.\n");  
+			mkdir(video_channel_path, 0777);
+			mkdir(video_day_path, 0777);
+			mkdir(index_channel_path, 0777);
+			mkdir(index_day_path, 0777);
+			video_tmp_fd = open_tmp(video_tmp);
+			index_tmp_fd = open_tmp(index_tmp);
+			init_index_tmp(index_tmp_fd);
+   	 	} 
+
+		if ((access(video_day_path, F_OK)) != -1)  
+    	{  
+        	printf("video data directory exist.\n");  
+    	}  		
+		else
+		{
+       		printf("video data directory is not exist, create directory.\n");  
+			mkdir(video_day_path, 0777);
+			mkdir(index_day_path, 0777);	
+			video_tmp_fd = open_tmp(video_tmp);
+			index_tmp_fd = open_tmp(index_tmp);	
+			init_index_tmp(index_tmp_fd);
+		}
+	
+		if ((access(video_tmp, F_OK)) != -1)  
+    	{  
+        	printf("video tmp file exist.\n");  
+    	}  		
+		else
+		{
+			if (cshmindex->type == P_FRAME_TYPE)
+			{
+				return 1;
+			}
+			else
+			{
+				video_tmp_fd = open_tmp(video_tmp);
+				index_tmp_fd = open_tmp(index_tmp);	
+				init_index_tmp(index_tmp_fd);			
+			}
+		}
 
 		ctime = convert_localtime_to_utc(frame);
 		if (ctime == -1)
@@ -263,7 +276,7 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 
 			/* storage one frame data and one index record */
 			write(video_tmp_fd, frame, cshmindex->lenth); 
-			get_current_index_record(index_tmp_fd, cshmindex, frame, &crecord);
+			get_current_index_record(video_tmp_fd, cshmindex, frame, &crecord);
 			put_current_index_record(index_tmp_fd, &crecord);
 
 			/* update share memory read_offset */
@@ -273,7 +286,7 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 		else
 		{
 			write(video_tmp_fd, frame, cshmindex->lenth); 
-			get_current_index_record(index_tmp_fd, cshmindex, frame, &crecord);
+			get_current_index_record(video_tmp_fd, cshmindex, frame, &crecord);
 			put_current_index_record(index_tmp_fd, &crecord);	
 			
 			if ((lrecord.time != 0) && ((lrecord.time-frecord.time) >= 120)) /* need to filter initialize record */
@@ -294,8 +307,10 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 	}
 	else
 	{
-		write(video_tmp_fd, frame, cshmindex->lenth); 
-		memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));
+		unsigned tmp = sizeof(RMSTREAM_HEADER)+sizeof(RMFI2_VIDEOINFO);
+		write(video_tmp_fd, frame, tmp); 
+		write(video_tmp_fd, (void*)frame + tmp + sizeof(RMFI2_RTCTIME), cshmindex->lenth - tmp); 
+		memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));		
 		return 1;
 	}
 
@@ -317,7 +332,7 @@ void init_index_tmp(int index_tmp_fd)
 	return;
 }
 
-int get_current_index_record(int index_tmp_fd, P4VEM_ShMIndex_t *cshmindex, FRAME_PACKET *cframe, INDEX_INFO *crecord)
+/*int get_current_index_record(int index_tmp_fd, P4VEM_ShMIndex_t *cshmindex, FRAME_PACKET *cframe, INDEX_INFO *crecord)
 {
 	if (cshmindex == NULL || cframe == NULL || crecord == NULL)
 	{
@@ -343,6 +358,37 @@ int get_current_index_record(int index_tmp_fd, P4VEM_ShMIndex_t *cshmindex, FRAM
 
 	crecord->time = ctime;
 	crecord->offset = lrecord.offset + lrecord.len;
+	crecord->len = cshmindex->lenth;
+	
+	return 1;
+}*/
+
+int get_current_index_record(int video_tmp_fd, P4VEM_ShMIndex_t *cshmindex, FRAME_PACKET *cframe, INDEX_INFO *crecord)
+{
+	if (cshmindex == NULL || cframe == NULL || crecord == NULL)
+	{
+		fprintf(stderr, "get_current_index_record string error\n");
+		return -1;
+	}	
+
+	unsigned int end_pos = 0;
+	int ctime = 0;
+	
+
+	end_pos = lseek(video_tmp_fd, 0, SEEK_END);
+	if (end_pos == -1)
+	{
+		return -1;		
+	}
+
+	ctime = convert_localtime_to_utc(cframe);
+	if (ctime == -1)
+	{
+		return -1;
+	}
+
+	crecord->time = ctime;
+	crecord->offset = end_pos - cshmindex->lenth;
 	crecord->len = cshmindex->lenth;
 	
 	return 1;
@@ -447,11 +493,11 @@ void get_search_channel_date(char *channel_date_path, int size, FILE *file)
 	fflush(stdout);
 
 	fgets(channel_date_path, size, file);
-	if (strlen(channel_date_path) < (size-1)) /* '\n' is read. */
+	if (strlen(channel_date_path) < (size -1 )) /* '\n' is read. */
 	{
 		return; 
 	}
-	else if ((strlen(channel_date_path) == (size-1)) && channel_date_path[size-2] == '\n')
+	else if ((strlen(channel_date_path) == (size - 1)) && channel_date_path[size - 2] == '\n')
 	{
 		return;
 	}
@@ -905,16 +951,12 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 		if (ret == -1)
 		{
 			fprintf(stderr, "read index file fail\n");
-			close(index_fd);
-			close(video_fd);
-			return;
+			goto end;
 		}
 		else if (ret == 0)
 		{
 			printf("read index file EOF\n");
-			close(index_fd);
-			close(video_fd);
-			return;
+			goto end;
 		}
 		convert_utc_to_localtime(&(tmp1.time), buf);
 		if (strcmp(buf, print_start_time) != 0)
@@ -938,25 +980,22 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 		if (ret == -1)
 		{
 			fprintf(stderr, "read index file fail\n");
-			close(index_fd);
-			close(video_fd);
-			return;
+			goto end;
 		}
 		else if (ret == 0)
 		{
 			printf("read index file EOF\n");
-			close(index_fd);
-			close(video_fd);
-			return;
+			goto end;
 		}
 		lseek(video_fd, tmp1.offset, SEEK_SET);
 		read(video_fd, &tmp2, tmp1.len);
 		printf("already read Iframe info: %#04X:%s\n", (unsigned int)tmp2.head.IFrameType, tmp2.frame);
 		convert_utc_to_localtime(&(tmp1.time), buf);
 	}
+
+end:
 	close(index_fd);
 	close(video_fd);
-
 	return;
 }
 

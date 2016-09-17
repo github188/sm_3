@@ -15,6 +15,7 @@
 static int video_tmp_fd = -1;
 static int index_tmp_fd = -1;
 
+
 typedef unsigned char BYTE;
 
 typedef struct _RMSTREAM_HEADER
