@@ -15,3 +15,4 @@ clean:
 	rm video/* -r
 	rm index/* -r
 	rm shmindex/shm.index 
+	ipcrm -M 0x4d2

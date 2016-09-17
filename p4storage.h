@@ -14,9 +14,10 @@
 #define I_FRAME_TYPE	50
 #define P_FRAME_TYPE	51
 
-static int video_tmp_fd = -1;
-static int index_tmp_fd = -1;
-unsigned int shm_read_offset;
+static int video_tmp_fd = -1; /* open tmp.h264 file description */
+static int index_tmp_fd = -1; /* open tmp.index file description */
+unsigned int flag; /* is or not search tmp.h264 */
+unsigned int shm_read_offset; /* update share memory read_offset */
 
 typedef struct _RMSTREAM_HEADER
 {
@@ -161,8 +162,11 @@ fill_video_timeseg_array returns, left is 0, right is (video segment count - 1) 
 void sort_video_timeseg_array(VIDEO_SEG_TIME timeseg[]/*in*/, int left, int right);
 
 /* check and update search video time follow the timeseg array, timeseg pointer from 
-fill_video_timeseg_array returns; update update_timeseg. */
-int check_search_video_time(VIDEO_SEG_TIME timeseg[]/*in*/, int video_seg_count, const char *time/*in*/, VIDEO_SEG_TIME* update_timeseg/*in-out*/);
+fill_video_timeseg_array returns; update update_timeseg. On true returns 1; on false -1 is returned. */
+int check_search_video_time(VIDEO_SEG_TIME timeseg[]/*in*/, int video_seg_count, const char *time/*in*/, VIDEO_SEG_TIME* update_timeseg/*in-out*/, int *flag/*in-out*/);
+
+/* Achieve to search the tmp video file. */
+void search_tmp_video_file(const char* channel_date_path/*in*/, VIDEO_SEG_TIME timeseg[], int video_seg_count, const char *time, int *flag);
 
 /* Search video segment, if have, output to stdout stream, then go back to terminal interface */
 void output_search_video_info(const char* channel_date_path/*in*/, VIDEO_SEG_TIME timeseg[]/*in*/, 
@@ -170,6 +174,9 @@ void output_search_video_info(const char* channel_date_path/*in*/, VIDEO_SEG_TIM
 
 /* Print Iframe information */
 void print_iframe_info(const char* channel_date_path/*in*/, VIDEO_SEG_TIME *index_video_seg/*in*/, char * print_start_time/*in*/, char *print_end_time/*in*/);
+
+/* Print tmp.h264 information */
+void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_end_time/*in*/);
 
 /* Take an argument of data  type  calendar time which represents time_t.
 On success returns time_t time; on error -1 is returned. */

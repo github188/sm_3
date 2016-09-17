@@ -166,7 +166,7 @@ int main()
 		shm_write_offset = 8 + 44;
 		memcpy(shared_memory_start+4, &shm_write_offset, 4);
 		printf("shm_write_offset::%d\n", head->write_offset);
-		//*******************************PFrame No.2********************************
+		//*******************************IFrame No.2********************************
 		packet = (FRAME_PACKET *)((char *)packet + sizeof(FRAME_PACKET));
 		printf("%X\n", (int)packet);
 		packet->head.IFrameType = 0x63643200;
@@ -192,7 +192,7 @@ int main()
   		packet->rtc.stuRtcTime.usWeek = 2;
   		packet->rtc.stuRtcTime.usReserved = 0;
   		packet->rtc.stuRtcTime.usMilliValidate = 0;
-  		strncpy(packet->frame, "abcdefghijkl", 12);
+  		strncpy(packet->frame, "ghijklabcdef", 12);
 
 		P4VEM_ShMIndex_t shm_index2;
 		shm_index2.type = 0x32;
@@ -211,7 +211,7 @@ int main()
 		shm_write_offset = 8 + 88;
 		memcpy(shared_memory_start+4, &shm_write_offset, 4);
 		printf("shm_write_offset::%d\n", head->write_offset);
-		//*******************************Frame No.3********************************
+		//*******************************IFrame No.3********************************
 		packet = (FRAME_PACKET *)((char *)packet + sizeof(FRAME_PACKET));
 		printf("%X\n", (int)packet);
 		packet->head.IFrameType = 0x63643200;
@@ -257,7 +257,7 @@ int main()
 		shm_write_offset = 8 + 132;
 		memcpy(shared_memory_start+4, &shm_write_offset, 4);
 		printf("shm_write_offset::%d\n", head->write_offset);
-		//*******************************Frame No.4********************************
+		//*******************************PFrame No.4********************************
 		packet = (FRAME_PACKET *)((char *)packet + sizeof(FRAME_PACKET));
 		printf("%X\n", (int)packet);
 		packet->head.IFrameType = 0x63643300;
@@ -271,7 +271,7 @@ int main()
 		packet->video.IHeight = 0x140;
 		packet->video.IFPS = 0x1E;
 
-  		strncpy((void*)packet + 20, "abcdefghijkl", 12);
+  		strncpy((void*)packet + 20, "ghijklabcdef", 12);
 
 		P4VEM_ShMIndex_t shm_index4;
 		shm_index4.type = 0x33;
@@ -290,7 +290,7 @@ int main()
 		shm_write_offset = 8 + 164;
 		memcpy(shared_memory_start+4, &shm_write_offset, 4);
 		printf("shm_write_offset::%d\n", head->write_offset);
-		//*******************************Frame No.5********************************
+		//*******************************IFrame No.5********************************
 		packet = (FRAME_PACKET *)((char *)packet + 32);
 		printf("%X\n", (int)packet);
 		packet->head.IFrameType = 0x63643200;
@@ -336,7 +336,7 @@ int main()
 		shm_write_offset = 8 + 208;
 		memcpy(shared_memory_start+4, &shm_write_offset, 4);
 		printf("shm_write_offset::%d\n", head->write_offset);
-		//*******************************Frame No.6********************************
+		//*******************************IFrame No.6********************************
 		packet = (FRAME_PACKET *)((char *)packet + sizeof(FRAME_PACKET));
 		printf("%X\n", (int)packet);
 		packet->head.IFrameType = 0x63643200;
@@ -362,7 +362,7 @@ int main()
   		packet->rtc.stuRtcTime.usWeek = 2;
   		packet->rtc.stuRtcTime.usReserved = 0;
   		packet->rtc.stuRtcTime.usMilliValidate = 0;
-  		strncpy(packet->frame, "abcdefghijkl", 12);
+  		strncpy(packet->frame, "ghijklabcdef", 12);
 
 		P4VEM_ShMIndex_t shm_index6;
 		shm_index6.type = 0x32;

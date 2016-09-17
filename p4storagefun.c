@@ -125,7 +125,6 @@ int get_one_frame(void *shared_memory_start, void *shared_memory_end, P4VEM_ShMI
 	unsigned int write_offset = 0;
 	read_offset = *((unsigned int*)shared_memory_start);
 	write_offset = *((unsigned int*)shared_memory_start + 1);
-	//printf("%d-%d\n", read_offset, write_offset);
 	
 	if (read_offset == write_offset)
 	{
@@ -383,6 +382,7 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 				index_tmp_fd = open_tmp(index_tmp);	
 				init_index_tmp(index_tmp_fd);	
 				write(video_tmp_fd, frame, cshmindex->lenth); 
+				get_current_index_record(video_tmp_fd, cshmindex, frame, &crecord);
 				put_current_index_record(index_tmp_fd, &crecord);
 
 				memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));
@@ -399,6 +399,7 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 				index_tmp_fd = open_tmp(index_tmp);	
 				init_index_tmp(index_tmp_fd);	
 				write(video_tmp_fd, frame, cshmindex->lenth); 
+				get_current_index_record(video_tmp_fd, cshmindex, frame, &crecord);
 				put_current_index_record(index_tmp_fd, &crecord);
 
 				memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));
@@ -407,6 +408,7 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 			else if (((crecord.time - frecord.time + 1) == 3) && (lrecord.time == crecord.time)) /*1233*/
 			{	
 				write(video_tmp_fd, frame, cshmindex->lenth); 
+				get_current_index_record(video_tmp_fd, cshmindex, frame, &crecord);
 				put_current_index_record(index_tmp_fd, &crecord);
 				close(video_tmp_fd);
 				close(index_tmp_fd);
@@ -423,6 +425,7 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 			else
 			{
 				write(video_tmp_fd, frame, cshmindex->lenth); 
+				get_current_index_record(video_tmp_fd, cshmindex, frame, &crecord);
 				put_current_index_record(index_tmp_fd, &crecord);
 				memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));
 				return 1;
@@ -952,7 +955,7 @@ void sort_video_timeseg_array(VIDEO_SEG_TIME timeseg[], int left, int right)
 	return;
 }
 
-int check_search_video_time(VIDEO_SEG_TIME timeseg[], int video_seg_count, const char *time, VIDEO_SEG_TIME* update_timeseg)
+int check_search_video_time(VIDEO_SEG_TIME timeseg[], int video_seg_count, const char *time, VIDEO_SEG_TIME* update_timeseg, int *flag)
 {
 	if (timeseg == NULL)
 	{
@@ -965,8 +968,8 @@ int check_search_video_time(VIDEO_SEG_TIME timeseg[], int video_seg_count, const
 	strncpy(update_timeseg->start_time, time, 6);
 	strncpy(update_timeseg->end_time, time+7, 6);
 
-	if ((strcmp(update_timeseg->start_time, timeseg[video_seg_count-1].end_time) > 0) ||
-		 strcmp(update_timeseg->end_time, timeseg[0].start_time) < 0)
+	if ((strcmp(update_timeseg->end_time, timeseg[0].start_time) < 0) ||
+		(strcmp(update_timeseg->start_time, timeseg[video_seg_count-1].end_time) > 0))
 	{
 		fprintf(stderr, "have't check_search_video_time\n");
 		return -1;
@@ -974,22 +977,111 @@ int check_search_video_time(VIDEO_SEG_TIME timeseg[], int video_seg_count, const
 
 	/* update video search time segment */
 	if ((strcmp(update_timeseg->start_time, timeseg[0].start_time) < 0) &&
-		 strcmp(update_timeseg->end_time, timeseg[video_seg_count-1].end_time) > 0)
+		 (strcmp(update_timeseg->end_time, timeseg[video_seg_count-1].end_time) > 0))
 	{
+		*flag = 1;
 		strncpy(update_timeseg->start_time, timeseg[0].start_time, 6);
 		strncpy(update_timeseg->end_time, timeseg[video_seg_count-1].end_time, 6);
 	}
-	else if (strcmp(update_timeseg->start_time, timeseg[0].start_time) < 0)	
+	else if ((strcmp(update_timeseg->start_time, timeseg[0].start_time) < 0) &&
+			(strcmp(update_timeseg->end_time, timeseg[video_seg_count-1].end_time) <= 0))
 	{
 		strncpy(update_timeseg->start_time, timeseg[0].start_time, 6);
 	}
-	else if (strcmp(update_timeseg->end_time, timeseg[video_seg_count-1].end_time) > 0)
+	else if ((strcmp(update_timeseg->end_time, timeseg[video_seg_count-1].end_time) > 0) &&
+			(strcmp(update_timeseg->start_time, timeseg[0].start_time) >= 0))
 	{
+		*flag = 1;
 		strncpy(update_timeseg->end_time, timeseg[video_seg_count-1].end_time, 6);
 	}
 
 	return 1;
 } 
+
+void search_tmp_video_file(const char* channel_date_path, VIDEO_SEG_TIME timeseg[], int video_seg_count, const char *time, int *flag)
+{
+	if (channel_date_path == NULL || time == NULL)
+	{
+		fprintf(stderr, "search_tmp_video_file string error\n");
+		return;	
+	}
+	
+	if (*flag != 1)
+	{
+		printf("don't need search tmp.264, completed.\n");
+		return;
+	}
+	else
+	{
+		*flag = 0;
+		printf("finally, come to search tmp.264\n");
+	}
+
+	int ret = -1;
+	int index_fd  = -1;
+	int video_fd  = -1;
+	VIDEO_SEG_TIME tmp_search;
+	INDEX_INFO first_tmp_index;
+	INDEX_INFO last_tmp_index;
+	unsigned char index_start[7] = {0};
+	unsigned char index_end[7] = {0};
+	
+	unsigned char video[PATH_LEN] = {0};
+	unsigned char index[PATH_LEN] = {0};
+
+	sprintf(video, "./video/%c%c/%s/tmp.h264", channel_date_path[0], channel_date_path[1], 
+																				channel_date_path+3);
+	sprintf(index, "./index/%c%c/%s/tmp.index", channel_date_path[0], channel_date_path[1], 
+																				channel_date_path+3);
+	
+	strncpy(tmp_search.start_time, timeseg[video_seg_count -1].end_time, 6);
+	strncpy(tmp_search.end_time, time+7, 6);
+	
+	if ((access(video, F_OK) != -1) && (access(index, F_OK) != -1)) 
+	{
+		index_fd = open_tmp(index);
+		video_fd = open_tmp(video);
+		ret = get_first_index_record(index_fd, &first_tmp_index);
+		if (ret == -1)
+		{
+			fprintf(stderr, "search_tmp_video_file call get_first_index_record fail\v");
+			return;
+		}
+		ret = get_last_index_record(index_fd, &last_tmp_index);
+		if (ret == -1)
+		{
+			fprintf(stderr, "search_tmp_video_file call get_last_index_record fail\v");
+			return;
+		}
+	}
+	else
+	{
+		return;
+	}
+
+	convert_utc_to_localtime(&first_tmp_index.time, index_start);
+	convert_utc_to_localtime(&last_tmp_index.time, index_end);
+
+	/* tmp_search.start_time less than index_start or equal. */
+	if (strcmp(tmp_search.end_time, index_start) < 0) 
+	{
+		printf("tmp.h264 have't relative data, search completed\n");
+		return;
+	}
+
+	if (strcmp(tmp_search.end_time, index_end) <= 0)
+	{
+		/* output tmp.h264 from  index_start to tmp_search.end_time */
+		print_tmp_video_info(video_fd, index_fd, tmp_search.end_time);
+	}
+	else if (strcmp(tmp_search.end_time, index_end) > 0)
+	{
+		/* output tmp.h264 from  index_start to index_end */
+		print_tmp_video_info(video_fd, index_fd, index_end);
+	}
+	printf("search completed.\n");
+	return;
+}
 
 void output_search_video_info(const char* channel_date_path, VIDEO_SEG_TIME timeseg[], 
 											int video_seg_count, VIDEO_SEG_TIME *update_timeseg)
@@ -1003,10 +1095,12 @@ void output_search_video_info(const char* channel_date_path, VIDEO_SEG_TIME time
 	int i = 0;
 	for (i = 0; i < video_seg_count; i++)
 	{
+		/* update_timeseg->start_time is in one video segment. */
 		if ((strcmp(update_timeseg->start_time, timeseg[i].start_time) == 0) || 
 			((strcmp(update_timeseg->start_time, timeseg[i].start_time) > 0) &&
 		 	(strcmp(update_timeseg->start_time, timeseg[i].end_time) <= 0)))
 		{
+			/* update_timeseg is in one video segment. */
 			if ((atoi(timeseg[i].end_time)-atoi(timeseg[i].start_time)) >= 
 				(atoi(update_timeseg->end_time)-atoi(update_timeseg->start_time))) 
 			{
@@ -1069,6 +1163,7 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 	int ret = -1;
 	int index_fd  = -1;
 	int video_fd  = -1;
+	INDEX_INFO tmp;
 	INDEX_INFO tmp1;
 	FRAME_PACKET tmp2;
 	unsigned char buf[7] = {0};
@@ -1112,7 +1207,9 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 	}
 	lseek(video_fd, tmp1.offset, SEEK_SET);
 	read(video_fd, &tmp2, tmp1.len);
-	printf("already read Iframe info: %#04X:%s\n", (unsigned int)tmp2.head.IFrameType, tmp2.frame);
+	printf("Iframe info: %02d:%02d:%02d %s\n", tmp2.rtc.stuRtcTime.cHour, 
+						tmp2.rtc.stuRtcTime.cMinute, tmp2.rtc.stuRtcTime.cSecond, tmp2.frame);
+	//printf("Iframe info: %d %s\n", tmp1.time, tmp2.frame);
 	while (strcmp(buf, print_end_time) != 0)
 	{
 		memset(&tmp1, 0, sizeof(INDEX_INFO));
@@ -1130,21 +1227,70 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 		}
 		lseek(video_fd, tmp1.offset, SEEK_SET);
 		read(video_fd, &tmp2, tmp1.len);
-		printf("already read Iframe info: %#04X:%s\n", (unsigned int)tmp2.head.IFrameType, tmp2.frame);
+		printf("Iframe info: %02d:%02d:%02d %s\n", tmp2.rtc.stuRtcTime.cHour, 
+						tmp2.rtc.stuRtcTime.cMinute, tmp2.rtc.stuRtcTime.cSecond, tmp2.frame);
+		//printf("Iframe info: %d %s\n", tmp1.time, tmp2.frame);
 		convert_utc_to_localtime(&(tmp1.time), buf);
 	}
 
-	if (read(index_fd, &tmp1, sizeof(INDEX_INFO)) > 0)
+	if (read(index_fd, &tmp, sizeof(INDEX_INFO)) > 0) /* occur two Iframe in one second. */
 	{
-		lseek(video_fd, tmp1.offset, SEEK_SET);
-		read(video_fd, &tmp2, tmp1.len);
-		printf("occur two Iframes in the last second: %#04X:%s\n", 
-													(unsigned int)tmp2.head.IFrameType, tmp2.frame);
+		if (tmp.time == tmp1.time)
+		{
+			lseek(video_fd, tmp.offset, SEEK_SET);
+			read(video_fd, &tmp2, tmp.len);
+			printf("Iframe info: %02d:%02d:%02d %s\n", tmp2.rtc.stuRtcTime.cHour, 
+						tmp2.rtc.stuRtcTime.cMinute, tmp2.rtc.stuRtcTime.cSecond, tmp2.frame);
+		}
+		else
+		{
+			goto end;
+		}
 	}
 
 end:
 	close(index_fd);
 	close(video_fd);
+	return;
+}
+
+void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_end_time)
+{
+	if (print_end_time == NULL)
+	{
+		fprintf(stderr, "print_tmp_video_info string error\n");
+		return;
+	}
+
+	int ret = -1;
+	INDEX_INFO tmp1;
+	FRAME_PACKET tmp2;
+	unsigned char buf[7] = {0};
+
+	while (strcmp(buf, print_end_time) != 0)
+	{
+		lseek(tmp_index_fd, sizeof(INDEX_INFO), SEEK_SET);
+		ret = read(tmp_index_fd, &tmp1, sizeof(INDEX_INFO));
+		if (ret == -1)
+		{
+			fprintf(stderr, "read tmp.index fail\n");
+			goto end;
+		}
+		lseek(tmp_video_fd, tmp1.offset, SEEK_SET);
+		ret = read(tmp_video_fd, &tmp2, tmp1.len);
+		if (ret == -1)
+		{
+			fprintf(stderr, "read tmp.h264 fail\n");
+			goto end;
+		}
+		printf("Iframe info: %02d:%02d:%02d %s\n", tmp2.rtc.stuRtcTime.cHour, 
+						tmp2.rtc.stuRtcTime.cMinute, tmp2.rtc.stuRtcTime.cSecond, tmp2.frame);
+		convert_utc_to_localtime(&(tmp1.time), buf);
+	}
+
+end:
+	close(tmp_video_fd);
+	close(tmp_index_fd);
 	return;
 }
 
