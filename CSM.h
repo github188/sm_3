@@ -16,7 +16,7 @@
 #include<sys/un.h>
 #include<sys/types.h>
 #include<sys/ioctl.h>
-#include<linux/in.h>
+#include<netinet/in.h>
 #include<unistd.h>
 #include<fcntl.h>
 #include<time.h>

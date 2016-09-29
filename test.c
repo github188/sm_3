@@ -35,9 +35,9 @@ int main(void)
 	//struct node n;
 	//printf("%d\n",sizeof(n));
 
-	TYPE a;
-	a = REQUEST_TYPE;
-	printf("%d\n", a);
+	//TYPE a;
+	//a = REQUEST_TYPE;
+	//printf("%d\n", a);
 	
 	return 0;
 }

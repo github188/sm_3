@@ -8,7 +8,6 @@
 			  and these functions are called by CenterServer module.
  Others: Given a serial of custom types for communicate to code module. 
 ***********************************************************************/
-
 #ifndef _P4STORAGE_H
 #define _P4STORAGE_H 1
 
@@ -34,23 +33,24 @@
 
 #define FRAME_SIZE 1024*30
 #define SHM_INDEX_NUM 1024
-#define FRAME_START_FLAG	5
+#define FRAME_START_FLAG	5	/* start byte count of every frame. */
 
-#define CHANNEL_CNT		8
-#define SEG_TIME	10
+#define CHANNEL_CNT	8
+#define SEG_TIME	10	/* seconds of every video segment. */
 #define PRINT_NUM	50	/* print valid Iframe data count. */
 
-#define PATH_LEN	255
+#define PATH_LEN				255
 #define SEARCH_CHANNEL_DATE		10
-#define SEARCH_TIME		14
+#define SEARCH_TIME				14
 
 #define I_FRAME_TYPE	50
 #define P_FRAME_TYPE	51
 
 #define STORAGE_RUN_LOG		1	/* Storage Module */
 #define CSM_RUN_LOG			2	/* CenterServer Module*/
-#define CM_RUN_LOG			3	/* Code  Module */
-#define DM_RUN_LOG			4	/* Device Module */
+#define VIM_RUN_LOG			3	/* Video Code-Encode Module */
+#define DEM_RUN_LOG			4	/* Device Manage Module */
+#define NEM_RUN_LOG			5	/* Device Manage Module */
 
 typedef struct _RMSTREAM_HEADER
 {
@@ -155,7 +155,7 @@ extern void init_index_tmp(int index_tmp_fd);
 
 /* Generate current index record.
 On success returns 1; on error -1 is returned. */
-int get_current_index_record(int index_tmp_fd, P4VEM_ShMIndex_t *cshmindex/*in*/, FRAME_PACKET *cframe/*in*/, INDEX_INFO *crecord/*in-out*/);
+extern int get_current_index_record(int index_tmp_fd, P4VEM_ShMIndex_t *cshmindex/*in*/, FRAME_PACKET *cframe/*in*/, INDEX_INFO *crecord/*in-out*/);
 
 /* Get first record from the index file.
 On success returns 1; on error -1 is returned. */
@@ -186,7 +186,7 @@ extern int search_time_check(char *time/*in*/, int size);
 
 /* Get the file name of all the video segment, then fill the VIDEO_SEG_TIME array.
 On success returns a pointer to a VIDEO_SEG_TIME array; on error NULL is returned. */
-VIDEO_SEG_TIME *fill_video_timeseg_array(const char* channel_date_path, int *video_seg_count/*in-out*/);
+extern VIDEO_SEG_TIME *fill_video_timeseg_array(const char* channel_date_path, int *video_seg_count/*in-out*/);
 
 /* Free VIDEO_SEG_TIME pointer of fill_video_timeseg_array returns*/
 extern void free_video_timeseg_array(VIDEO_SEG_TIME *timeseg/*in*/);
@@ -200,7 +200,6 @@ fill_video_timeseg_array returns; update update_timeseg. On true returns 1; on f
 extern int check_search_video_time(VIDEO_SEG_TIME timeseg[]/*in*/, int video_seg_count, const char *time/*in*/, VIDEO_SEG_TIME* update_timeseg/*in-out*/);
 
 /* Achieve to search the tmp video file. */
-//void search_tmp_video_file(const char* channel_date_path/*in*/, VIDEO_SEG_TIME timeseg[], int video_seg_count, const char *time, int *flag);
 extern void search_tmp_video_file(const char* channel_date_path/*in*/, const char *time);
 
 /* Search video segment, if have, output to stdout stream, then go back to terminal interface */

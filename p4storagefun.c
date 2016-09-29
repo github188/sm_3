@@ -45,8 +45,9 @@
 	void p4_terminal(void);
 	void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, 
 																	size_t frame_mem_size);
-	void p4_storage_init(void);
 	void p4_heart(void);
+	void p4_log_collect(void);
+	void p4_storage_init(void);
 ***********************************************************************/
 
 #include "p4storage.h"
@@ -305,10 +306,12 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 	                         cshmindex->time.year, cshmindex->time.month, cshmindex->time.day);
 	sprintf(index_day_path, "%s/%02d%02d%02d", index_channel_path,
 	                         cshmindex->time.year, cshmindex->time.month, cshmindex->time.day);
-	sprintf(video_tmp, "%s/tmp.h264", video_day_path,
+	/*sprintf(video_tmp, "%s/tmp.h264", video_day_path,
 	                         cshmindex->time.year, cshmindex->time.month, cshmindex->time.day);
 	sprintf(index_tmp, "%s/tmp.index", index_day_path,
-	                         cshmindex->time.year, cshmindex->time.month, cshmindex->time.day);
+	                         cshmindex->time.year, cshmindex->time.month, cshmindex->time.day);*/
+	sprintf(video_tmp, "%s/tmp.h264", video_day_path);
+	sprintf(index_tmp, "%s/tmp.index", index_day_path);
 
 	if (cshmindex->type == I_FRAME_TYPE)
 	{
@@ -1356,17 +1359,7 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 			goto end;
 		}
 		convert_utc_to_localtime(&(tmp1.time), buf);
-		//if (strcmp(buf, print_start_time) != 0)
-		//{
-		//	continue;
-		//}
-		//else
-		//{
-		//	#ifdef DEBUG
-		//		printf("already read print_start_time, begin output Iframe info.\n");
-		//	#endif
-		//	break;
-		//}
+
 		if (strcmp(buf, print_start_time) == 0)
 		{
 			#ifdef DEBUG
@@ -1419,7 +1412,6 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 			break;
 		}
 		print_valid_frame_data(&tmp2);
-		//convert_utc_to_localtime(&(tmp1.time), buf);
 	}
 
 	if (read(index_fd, &tmp, sizeof(INDEX_INFO)) > 0) /* occur two Iframe in one second. */
@@ -1590,7 +1582,7 @@ int list_channel(void)
 	}
 	if (cnt == 0)
 	{
-		printf(YELLOW "No channel video recording.\n" NONE);
+		printf(YELLOW "No channel video recording,waiting....\n" NONE);
 		return cnt;
 	}
 	else
@@ -1637,27 +1629,33 @@ void p4_log(int log_type, const char* format, ...)
 
     sprintf(buffer,"%04d-%02d-%02d %02d:%02d:%02d %s\n", local->tm_year+1900, local->tm_mon+1, local->tm_mday, local->tm_hour, local->tm_min, local->tm_sec, wrlog);  
 
-	 sprintf(day,"./log/%02d%02d%02d", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday, local->tm_hour, local->tm_min, local->tm_sec);  
+	 /*sprintf(day,"./log/%02d%02d%02d", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday, local->tm_hour, local->tm_min, local->tm_sec);*/
+ 	sprintf(day,"./log/%02d%02d%02d", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);  
+
 	if ((access(day, F_OK)) == -1)  
     {  
 		mkdir(day, 0777);
     }  
 
-	if (log_type == 1)
+	if (log_type == STORAGE_RUN_LOG)
 	{
 		sprintf(logpath, "./log/%02d%02d%02d/storage_module_operate.log", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);
 	}
-	if (log_type == 2)
+	else if (log_type == CSM_RUN_LOG)
 	{
 		sprintf(logpath, "./log/%02d%02d%02d/centerserver_operate.log", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);
 	}
-	if (log_type == 3)
+	else if (log_type == VIM_RUN_LOG)
 	{
-		sprintf(logpath, "./log/%02d%02d%02d/code_module_operate.log", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);
+		sprintf(logpath, "./log/%02d%02d%02d/video_module_operate.log", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);
 	}
-	if (log_type == 4)
+	else if (log_type == DEM_RUN_LOG)
 	{
 		sprintf(logpath, "./log/%02d%02d%02d/device_module_operate.log", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);
+	}
+	else if (log_type == NEM_RUN_LOG)
+	{
+		sprintf(logpath, "./log/%02d%02d%02d/net_module_operate.log", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);
 	}
 
     log_fp = fopen(logpath, "a+");  
@@ -1692,7 +1690,13 @@ void p4_terminal(void)
 	{
 		for (;;)
 		{
-			list_channel();
+			int cnt = 0;
+			cnt = list_channel();
+			if (cnt == 0)
+			{
+				sleep(3);
+				continue;
+			}
 			get_search_channel_date(date,sizeof(date), stdin);
 			ret = search_channel_date_check(date, sizeof(date));
 			if (ret == -1 )
@@ -1916,19 +1920,48 @@ void p4_heart(void)
 
 void p4_log_collect(void)
 {
-	unsigned int len = 0;
-	unsigned char buf[1024];
+	int len = 0;
+	char buf[1024] = {0};
+	char log_module[4] = {0};
 	struct sockaddr_un from = {0};
 
 	for (;;)
 	{
+		/* according to log protocol. */
 		len = recv_data(storage_fd, buf, 1024, &from);
-	
-		if (len > 0)
+		if (len <= 0)
 		{
-			//p4_log(xxx, "%s", buf);
+			usleep(10000);
+			continue;
 		}
-		sleep(5);
+		else
+		{
+			log_module[0] = buf[1];
+			log_module[1] = buf[2];
+			log_module[2] = buf[3];
+			if (!strcmp(log_module, "STM"))
+			{
+				p4_log(STORAGE_RUN_LOG, "%s", buf);
+			}
+			else if (!strcmp(log_module, "CSM"))
+			{
+				p4_log(CSM_RUN_LOG, "%s", buf);
+			}
+			else if (!strcmp(log_module, "VIM"))
+			{
+				p4_log(VIM_RUN_LOG, "%s", buf);
+			}
+			else if (!strcmp(log_module, "DEM"))
+			{
+				p4_log(DEM_RUN_LOG, "%s", buf);
+			}
+			else if (!strcmp(log_module, "NEM"))
+			{
+				p4_log(NEM_RUN_LOG, "%s", buf);
+			}
+			memset(buf, 0, 1024);
+			memset(log_module, 0, 4);
+		}
 	}
 	
 	return;
@@ -1938,11 +1971,11 @@ void p4_log_collect(void)
 void p4_storage_init(void)
 {
 	int ret = -1;
-	struct P4 *storage_msg = NULL;
 	TYPE storage_msg_type;
 	Module_Num storage_no;
 	unsigned int service_num = 0;
 	unsigned int storage_msg_len = 0;
+	struct P4 *storage_msg = NULL;
 
 	storage_fd = create_socket(sockets[1]);
 	
@@ -1965,6 +1998,8 @@ void p4_storage_init(void)
 		p4_log(STORAGE_RUN_LOG, "send_message::REGISTER_TYPE fail.");
 		exit(EXIT_FAILURE);
 	}
+
+	free(storage_msg);	
 
 	return;
 }
