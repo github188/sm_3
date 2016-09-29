@@ -1,4 +1,64 @@
+/**********************************************************************
+ Copyright(C),2016-2018,www.streamax.com
+ File name: p4storagefun.c
+ Author: ZhaoKun
+ Version: V3.3.3
+ Date: 2016-9-17
+ Desrciption: This file achieve file p4storage.h declaraction function.
+ Function List: 
+	FILE *open_shm_index(const char *path);
+	int close_shm_index(FILE *indexfp);
+	int open_tmp(const char* tmpstring);
+	int get_one_shm_index(FILE *indexfp, P4VEM_ShMIndex_t *oldshmindex, P4VEM_ShMIndex_t *newshmindex);
+	int get_one_index(void *shared_index_memory_start, P4VEM_ShMIndex_t *newshmindex);
+	int get_one_frame(void *shared_memory_start, void *shared_memory_end, P4VEM_ShMIndex_t
+																*cshmindex,FRAME_PACKET *frame);
+	int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FRAME_PACKET *frame);
+	void init_index_tmp(int index_tmp_fd);
+	int get_current_index_record(int index_tmp_fd, P4VEM_ShMIndex_t *cshmindex, FRAME_PACKET *cframe, 
+																					INDEX_INFO *crecord);
+	int get_first_index_record(int index_tmp_fd, INDEX_INFO *frecord);
+	int put_current_index_record(int index_tmp_fd, INDEX_INFO *crecord);
+	int get_last_index_record(int index_tmp_fd, INDEX_INFO *lrecord);
+	int get_last_front_index_record(int index_tmp_fd, INDEX_INFO *lfrecord);
+	void get_search_channel_date(char *channel_date_path, int size, FILE *file);
+	void get_search_time(char *time, int size, FILE *file);
+	int search_channel_date_check(char *channel_date_path/, int size);
+	int search_time_check(char *time, int size);
+	VIDEO_SEG_TIME *fill_video_timeseg_array(const char* channel_date_path, int *video_seg_count/);
+	void free_video_timeseg_array(VIDEO_SEG_TIME *timeseg);
+	void sort_video_timeseg_array(VIDEO_SEG_TIME timeseg[], int left, int right);
+	int check_search_video_time(VIDEO_SEG_TIME timeseg[], int video_seg_count, const char *time, 
+																	VIDEO_SEG_TIME* update_timeseg);
+	void search_tmp_video_file(const char* channel_date_path, const char *time);
+	void output_search_video_info(const char* channel_date_path, VIDEO_SEG_TIME timeseg[], 
+											int video_seg_count, VIDEO_SEG_TIME *update_timeseg);
+	void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_video_seg, 
+													char * print_start_time, char *print_end_time);
+	void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_end_time);
+
+	void print_valid_frame_data(FRAME_PACKET *packet);
+	int convert_localtime_to_utc(FRAME_PACKET *packet);
+	void convert_utc_to_localtime(const unsigned int *time, char *ltime);
+	int list_channel(void);
+	void p4_log(int log_type, const char* format, ...);
+	void p4_terminal(void);
+	void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, 
+																	size_t frame_mem_size);
+	void p4_storage_init(void);
+	void p4_heart(void);
+***********************************************************************/
+
 #include "p4storage.h"
+#include "CSM.h"
+#include "common.h"
+#include "path.h"
+
+static uint32_t flag; /* is or not search tmp.h264 */
+static uint32_t shm_read_offset; /* update share memory read_offset */
+static tmp_fd channel_tmp[CHANNEL_CNT];
+
+static int storage_fd = -1;
 
 /* Open share memory index file. (This function has been abandoned.) */
 FILE *open_shm_index(const char *path)
@@ -6,7 +66,7 @@ FILE *open_shm_index(const char *path)
 	if (path == NULL)
 	{
 		perror("open_shm_index string error:");
-		p4_log(RUN_LOG, "open_shm_index string error.");
+		p4_log(STORAGE_RUN_LOG, "open_shm_index string error.");
 		exit(EXIT_FAILURE);		
 	}
 
@@ -16,7 +76,7 @@ FILE *open_shm_index(const char *path)
 	if (indexfp == NULL)
 	{
 		perror("fopen shm index file fail:");
-		p4_log(RUN_LOG, "fopen shm index file fail.");
+		p4_log(STORAGE_RUN_LOG, "fopen shm index file fail.");
 		exit(EXIT_FAILURE);
 	}	
 	
@@ -28,7 +88,7 @@ int close_shm_index(FILE *indexfp)
 {
 	if (indexfp == NULL)
 	{
-		fprintf(stderr, "close_shm_index string error.\n");
+		p4_log(STORAGE_RUN_LOG, "close_shm_index string error.\n");
 		return -1;				
 	}
 	fclose(indexfp);
@@ -41,7 +101,7 @@ int open_tmp(const char* tmpstring)
 {
 	if (tmpstring == NULL)
 	{
-		fprintf(stderr, "open_tmp string error.\n");
+		p4_log(STORAGE_RUN_LOG, "open_tmp string error.\n");
 		return -1;				
 	}
 
@@ -50,9 +110,8 @@ int open_tmp(const char* tmpstring)
 	tmp = open(tmpstring, O_RDWR | O_CREAT, 0666);
 	if (tmp == -1)
 	{
-		perror("open_tm file fail.\n");
-		p4_log(RUN_LOG, "open_tm file fail.");
-		exit(EXIT_FAILURE);		
+		p4_log(STORAGE_RUN_LOG, "open_tmp file fail.");
+		return -1;	
 	}
 
 	return tmp;
@@ -63,7 +122,7 @@ int get_one_shm_index(FILE *indexfp, P4VEM_ShMIndex_t *oldshmindex, P4VEM_ShMInd
 {
 	if (indexfp == NULL || oldshmindex == NULL || newshmindex == NULL)
 	{
-		fprintf(stderr, "get_one_shm_index string error.\n");
+		p4_log(STORAGE_RUN_LOG, "get_one_shm_index string error.\n");
 		return -1;
 	}	
 
@@ -72,7 +131,7 @@ int get_one_shm_index(FILE *indexfp, P4VEM_ShMIndex_t *oldshmindex, P4VEM_ShMInd
 	cnt = fread(newshmindex, sizeof(P4VEM_ShMIndex_t), 1, indexfp);	
 	if (cnt == 0)
 	{
-		fprintf(stderr, "fread an error  occurs, or the end-of-file is reached.\n");
+		p4_log(STORAGE_RUN_LOG, "fread an error  occurs, or the end-of-file is reached.\n");
 		return -1;
 	}
 
@@ -91,7 +150,7 @@ int get_one_index(void *shared_index_memory_start, P4VEM_ShMIndex_t *newshmindex
 {
 	if (shared_index_memory_start == NULL || newshmindex == NULL)
 	{
-		fprintf(stderr, "get_one_index string error.\n");
+		p4_log(STORAGE_RUN_LOG, "get_one_index string error.\n");
 		return -1;
 	}
 
@@ -131,7 +190,7 @@ int get_one_frame(void *shared_memory_start, void *shared_memory_end, P4VEM_ShMI
 {
 	if (shared_memory_start == NULL || shared_memory_end == NULL || cshmindex == NULL || frame == NULL)
 	{
-		fprintf(stderr, "get_one_frame string error.\n");
+		p4_log(STORAGE_RUN_LOG, "get_one_frame string error.\n");
 		return -1;
 	}	
 
@@ -228,7 +287,7 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 {
 	if (shared_memory_start == NULL || cshmindex == NULL || frame == NULL)
 	{
-		fprintf(stderr, "storage_one_frame error.\n");
+		p4_log(STORAGE_RUN_LOG, "storage_one_frame error.\n");
 		return -1;				
 	}
 
@@ -326,8 +385,8 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 						if((fcntl(channel_tmp[i].vt_fd, F_GETFL) == -1) && (fcntl(channel_tmp[i].it_fd, F_GETFL) == -1))
 						{
 							#ifdef DEBUG
-							printf("%m::tmp file already closed, maybe restart this process. Now open tmp file again.\n");
-							//printf("%s",strerror(errno)); // equal to printf("%m"); 
+								printf("%m::tmp file already closed, maybe restart this process. Now open tmp file again.\n");
+								//printf("%s",strerror(errno)); // equal to printf("%m"); 
 							#endif	
 							channel_tmp[i].vt_fd = open_tmp(video_tmp);
 							channel_tmp[i].it_fd = open_tmp(index_tmp);
@@ -509,9 +568,8 @@ void init_index_tmp(int index_tmp_fd)
 	ret = write(index_tmp_fd, &init_record, sizeof(INDEX_INFO));
 	if (ret == -1)
 	{
-		perror("initialize the index tmp file fail:");
-		p4_log(RUN_LOG, "initialize the index tmp file fail.");
-		exit(EXIT_FAILURE);		
+		p4_log(STORAGE_RUN_LOG, "initialize the index tmp file fail.");
+		return;	
 	}
 
 	return;
@@ -522,7 +580,7 @@ int get_current_index_record(int video_tmp_fd, P4VEM_ShMIndex_t *cshmindex, FRAM
 {
 	if (cshmindex == NULL || cframe == NULL || crecord == NULL)
 	{
-		fprintf(stderr, "get_current_index_record string error.\n");
+		p4_log(STORAGE_RUN_LOG, "get_current_index_record string error.\n");
 		return -1;
 	}	
 
@@ -553,7 +611,7 @@ int get_first_index_record(int index_tmp_fd, INDEX_INFO *frecord)
 {
 	if (frecord == NULL)
 	{
-		fprintf(stderr, "get_first_index_record string error.\n");
+		p4_log(STORAGE_RUN_LOG, "get_first_index_record string error.\n");
 		return -1;
 	}
 
@@ -562,14 +620,14 @@ int get_first_index_record(int index_tmp_fd, INDEX_INFO *frecord)
 	ret = lseek(index_tmp_fd, sizeof(INDEX_INFO), SEEK_SET); 
 	if (ret == -1)
 	{
-		fprintf(stderr, "lseek the start position of the index tmp file fail.\n");
+		p4_log(STORAGE_RUN_LOG, "lseek the start position of the index tmp file fail.\n");
 		return -1;
 	}
 
 	ret = read(index_tmp_fd, frecord, sizeof(INDEX_INFO));
 	if (ret == -1)
 	{
-		fprintf(stderr, "read the first index record fail.\n");
+		p4_log(STORAGE_RUN_LOG, "read the first index record fail.\n");
 		return -1;
 	}
 	else if (ret == 0)
@@ -587,7 +645,7 @@ int put_current_index_record(int index_tmp_fd, INDEX_INFO *crecord)
 {
 	if (crecord == NULL)
 	{
-		fprintf(stderr, "put_current_index_record string error.\n");
+		p4_log(STORAGE_RUN_LOG, "put_current_index_record string error.\n");
 		return -1;
 	}
 
@@ -596,14 +654,14 @@ int put_current_index_record(int index_tmp_fd, INDEX_INFO *crecord)
 	ret = lseek(index_tmp_fd, 0, SEEK_END);
 	if (ret == -1)
 	{
-		fprintf(stderr, "lseek the index tmp file end position fail:");
+		p4_log(STORAGE_RUN_LOG, "lseek the index tmp file end position fail:");
 		return -1;
 	}
 
 	ret = write(index_tmp_fd, crecord, sizeof(INDEX_INFO));
 	if (ret == -1)
 	{
-		fprintf(stderr, "write the current index record fail:");
+		p4_log(STORAGE_RUN_LOG, "write the current index record fail:");
 		return -1;
 	}	
 
@@ -615,7 +673,7 @@ int get_last_index_record(int index_tmp_fd, INDEX_INFO *lrecord)
 {
 	if (lrecord == NULL)
 	{
-		fprintf(stderr, "get_last_index_record string error.\n");
+		p4_log(STORAGE_RUN_LOG, "get_last_index_record string error.\n");
 		return;
 	}
 
@@ -624,14 +682,14 @@ int get_last_index_record(int index_tmp_fd, INDEX_INFO *lrecord)
 	ret = lseek(index_tmp_fd, -sizeof(INDEX_INFO), SEEK_END);
 	if (ret == -1)
 	{
-		fprintf(stderr, "lseek the last record position of the index tmp file fail:");
+		p4_log(STORAGE_RUN_LOG, "lseek the last record position of the index tmp file fail:");
 		return -1;
 	}
 
 	ret = read(index_tmp_fd, lrecord, sizeof(INDEX_INFO));
 	if (ret == -1)
 	{
-		fprintf(stderr, "read the last index record fail:");
+		p4_log(STORAGE_RUN_LOG, "read the last index record fail:");
 		return -1;
 	}
 		
@@ -643,7 +701,7 @@ int get_last_front_index_record(int index_tmp_fd, INDEX_INFO *lfrecord)
 {
 	if (lfrecord == NULL)
 	{
-		fprintf(stderr, "get_last_index_record string error.\n");
+		p4_log(STORAGE_RUN_LOG, "get_last_index_record string error.\n");
 		return;
 	}
 
@@ -652,14 +710,14 @@ int get_last_front_index_record(int index_tmp_fd, INDEX_INFO *lfrecord)
 	ret = lseek(index_tmp_fd, -sizeof(INDEX_INFO)*2, SEEK_END);
 	if (ret == -1)
 	{
-		fprintf(stderr, "lseek the last front record position of the index tmp file fail:");
+		p4_log(STORAGE_RUN_LOG, "lseek the last front record position of the index tmp file fail:");
 		return -1;
 	}
 
 	ret = read(index_tmp_fd, lfrecord, sizeof(INDEX_INFO));
 	if (ret == -1)
 	{
-		fprintf(stderr, "read the last front index record fail:");
+		p4_log(STORAGE_RUN_LOG, "read the last front index record fail:");
 		return -1;
 	}
 		
@@ -671,7 +729,7 @@ void get_search_channel_date(char *channel_date_path, int size, FILE *file)
 {
 	if (file == NULL)
 	{
-		fprintf(stderr, "get_search_channel_date string error.\n");
+		p4_log(STORAGE_RUN_LOG, "get_search_channel_date string error.\n");
 		return;
 	}
 
@@ -701,7 +759,7 @@ void get_search_time(char *time, int size, FILE *file)
 {
 	if (file == NULL)
 	{
-		fprintf(stderr, "get_search_time string error.\n");
+		p4_log(STORAGE_RUN_LOG, "get_search_time string error.\n");
 		return;
 	}
 
@@ -729,7 +787,7 @@ int search_channel_date_check(char *channel_date_path, int size)
 {
 	if (channel_date_path == NULL)
 	{
-		fprintf(stderr, "search_channel_date_check string error.\n");
+		p4_log(STORAGE_RUN_LOG, "search_channel_date_check string error.\n");
 		return -1;
 	}
 
@@ -781,7 +839,7 @@ int search_channel_date_check(char *channel_date_path, int size)
 	month = atoi(channel_date + 3);
 	day = atoi(channel_date + 6);	
 	
-	if(!((year >= 16) && (month <= 12 && month >= 1) && (day <= 31 && day >= 1)))
+	if(!((year >= 0) && (month <= 12 && month >= 1) && (day <= 31 && day >= 1)))
 	{
 		fprintf(stderr, L_RED "search date number error, Please input again.\n" NONE);
 		return -1;
@@ -808,7 +866,7 @@ int search_time_check(char *time, int size)
 {
 	if (time == NULL)
 	{
-		fprintf(stderr, "search_time_check string error.\n");
+		p4_log(STORAGE_RUN_LOG, "search_time_check string error.\n");
 		return -1;
 	}
 
@@ -893,7 +951,7 @@ VIDEO_SEG_TIME *fill_video_timeseg_array(const char* channel_date_path, int *vid
 {
 	if (channel_date_path == NULL)
 	{
-		fprintf(stderr, "fill_video_timeseg_array string error.\n");
+		p4_log(STORAGE_RUN_LOG, "fill_video_timeseg_array string error.\n");
 		return NULL;
 	}
 
@@ -964,7 +1022,7 @@ void free_video_timeseg_array(VIDEO_SEG_TIME *timeseg)
 {
 	if (timeseg == NULL)
 	{
-		fprintf(stderr, "free_video_timeseg_array heap pointer NULL.\n");
+		p4_log(STORAGE_RUN_LOG, "free_video_timeseg_array heap pointer NULL.\n");
 		return;
 	}
 	
@@ -978,7 +1036,7 @@ void sort_video_timeseg_array(VIDEO_SEG_TIME timeseg[], int left, int right)
 {
 	if (timeseg == NULL)
 	{
-		fprintf(stderr, "sort_video_timeseg_array pointer NULL.\n");
+		p4_log(STORAGE_RUN_LOG, "sort_video_timeseg_array pointer NULL.\n");
 		return;
 	}
 
@@ -1028,7 +1086,7 @@ int check_search_video_time(VIDEO_SEG_TIME timeseg[], int video_seg_count, const
 {
 	if (timeseg == NULL)
 	{
-		fprintf(stderr, "check_search_video_time pointer error.\n");
+		p4_log(STORAGE_RUN_LOG, "check_search_video_time pointer error.\n");
 		flag = 1; /* now only exist tmp.h264 video segment. */
 		return -1;
 	}
@@ -1081,7 +1139,7 @@ void search_tmp_video_file(const char* channel_date_path, const char *time)
 {
 	if (channel_date_path == NULL || time == NULL)
 	{
-		fprintf(stderr, "search_tmp_video_file string error.\n");
+		p4_log(STORAGE_RUN_LOG, "search_tmp_video_file string error.\n");
 		return;	
 	}
 	
@@ -1128,13 +1186,13 @@ void search_tmp_video_file(const char* channel_date_path, const char *time)
 		ret = get_first_index_record(index_fd, &first_tmp_index);
 		if (ret == -1)
 		{
-			fprintf(stderr, "search_tmp_video_file call get_first_index_record fail.\n");
+			p4_log(STORAGE_RUN_LOG, "search_tmp_video_file call get_first_index_record fail.\n");
 			return;
 		}
 		ret = get_last_index_record(index_fd, &last_tmp_index);
 		if (ret == -1)
 		{
-			fprintf(stderr, "search_tmp_video_file call get_last_index_record fail.\n");
+			p4_log(STORAGE_RUN_LOG, "search_tmp_video_file call get_last_index_record fail.\n");
 			return;
 		}
 	}
@@ -1178,7 +1236,7 @@ void output_search_video_info(const char* channel_date_path, VIDEO_SEG_TIME time
 {
 	if (channel_date_path == NULL || timeseg == NULL || update_timeseg == NULL)
 	{
-		fprintf(stderr, "output_search_video_info string error.\n");
+		p4_log(STORAGE_RUN_LOG, "output_search_video_info string error.\n");
 		return;
 	}
 
@@ -1256,7 +1314,7 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 {
 	if (channel_date_path == NULL || index_video_seg == NULL || print_start_time == NULL || print_end_time == NULL)
 	{
-		fprintf(stderr, "print_iframe_info string error.\n");
+		p4_log(STORAGE_RUN_LOG, "print_iframe_info string error.\n");
 		return;
 	}
 	
@@ -1287,12 +1345,14 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 		ret = read(index_fd, &tmp1, sizeof(INDEX_INFO));
 		if (ret == -1)
 		{
-			fprintf(stderr, "read index file fail.\n");
+			p4_log(STORAGE_RUN_LOG, "read index file fail.\n");
 			goto end;
 		}
 		else if (ret == 0)
 		{
-			printf("read index file EOF.\n");
+			#ifdef DEBUG
+				printf("read index file EOF.\n");
+			#endif
 			goto end;
 		}
 		convert_utc_to_localtime(&(tmp1.time), buf);
@@ -1338,7 +1398,7 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 		ret = read(index_fd, &tmp1, sizeof(INDEX_INFO));
 		if (ret == -1)
 		{
-			fprintf(stderr, "read index file fail.\n");
+			p4_log(STORAGE_RUN_LOG, "read index file fail.\n");
 			goto end;
 		}
 		else if (ret == 0)
@@ -1365,7 +1425,7 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 	if (read(index_fd, &tmp, sizeof(INDEX_INFO)) > 0) /* occur two Iframe in one second. */
 	{
 		convert_utc_to_localtime(&(tmp1.time), buf);
-		if ((tmp.time == tmp1.time) && (strcmp(buf, print_end_time) <= 0)) /* 084200-084201 (avoid print 084202) */
+		if ((tmp.time == tmp1.time) && (strcmp(buf, print_end_time) <= 0)) /* 084200-084201 (avoid to print time:084202) */
 		{
 			lseek(video_fd, tmp.offset, SEEK_SET);
 			read(video_fd, &tmp2, tmp.len);
@@ -1389,7 +1449,7 @@ void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_end_ti
 {
 	if (print_end_time == NULL)
 	{
-		fprintf(stderr, "print_tmp_video_info string error.\n");
+		p4_log(STORAGE_RUN_LOG, "print_tmp_video_info string error.\n");
 		return;
 	}
 
@@ -1405,14 +1465,14 @@ void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_end_ti
 		ret = read(tmp_index_fd, &tmp1, sizeof(INDEX_INFO));
 		if (ret == -1)
 		{
-			fprintf(stderr, "read tmp.index fail.\n");
+			p4_log(STORAGE_RUN_LOG, "read tmp.index fail.\n");
 			goto end;
 		}
 		lseek(tmp_video_fd, tmp1.offset, SEEK_SET);
 		ret = read(tmp_video_fd, &tmp2, tmp1.len);
 		if (ret == -1)
 		{
-			fprintf(stderr, "read tmp.h264 fail.\n");
+			p4_log(STORAGE_RUN_LOG, "read tmp.h264 fail.\n");
 			goto end;
 		}
 		print_valid_frame_data(&tmp2);
@@ -1460,7 +1520,7 @@ int convert_localtime_to_utc(FRAME_PACKET *packet)
 {
 	if (packet == NULL)
 	{
-		fprintf(stderr, "convert_localtime_to_utc address error.\n");
+		p4_log(STORAGE_RUN_LOG, "convert_localtime_to_utc address error.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -1477,7 +1537,7 @@ int convert_localtime_to_utc(FRAME_PACKET *packet)
 	ret = mktime(&info);
 	if( ret == -1 )
 	{
-		perror("time convert error:");
+		p4_log(STORAGE_RUN_LOG, "time convert error:");
 		return -1;
 	}
 
@@ -1489,7 +1549,7 @@ void convert_utc_to_localtime(const unsigned int *time, char *ltime)
 {
 	if (time == NULL || ltime == NULL)
 	{
-		fprintf(stderr, "convert_utc_localtime address error.\n");
+		p4_log(STORAGE_RUN_LOG, "convert_utc_localtime address error.\n");
 		return;
 	}
 
@@ -1498,8 +1558,8 @@ void convert_utc_to_localtime(const unsigned int *time, char *ltime)
 	local = localtime(timep); 
 	if (local == NULL)
 	{
-		perror("localtime error:");
-		exit(EXIT_FAILURE);
+		p4_log(STORAGE_RUN_LOG, "localtime error:");
+		return;
 	}
 	sprintf(ltime,"%02d%02d%02d", local->tm_hour, local->tm_min, local->tm_sec);  
 
@@ -1530,7 +1590,7 @@ int list_channel(void)
 	}
 	if (cnt == 0)
 	{
-		printf("No channel video recording.\n");
+		printf(YELLOW "No channel video recording.\n" NONE);
 		return cnt;
 	}
 	else
@@ -1559,6 +1619,7 @@ void p4_log(int log_type, const char* format, ...)
     char wrlog[1024] = {0};  
     char buffer[1024] = {0};  
 	char logpath[255] = {0};
+	char day[12] = {0};
 	FILE* log_fp = NULL;
     va_list args;  
     va_start(args, format);  
@@ -1575,15 +1636,34 @@ void p4_log(int log_type, const char* format, ...)
 	#endif
 
     sprintf(buffer,"%04d-%02d-%02d %02d:%02d:%02d %s\n", local->tm_year+1900, local->tm_mon+1, local->tm_mday, local->tm_hour, local->tm_min, local->tm_sec, wrlog);  
+
+	 sprintf(day,"./log/%02d%02d%02d", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday, local->tm_hour, local->tm_min, local->tm_sec);  
+	if ((access(day, F_OK)) == -1)  
+    {  
+		mkdir(day, 0777);
+    }  
+
 	if (log_type == 1)
 	{
-		//sprintf(logpath, "./log/%02d%02d%02d-op.log", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);
-		sprintf(logpath, "./log/operate.log");
+		sprintf(logpath, "./log/%02d%02d%02d/storage_module_operate.log", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);
 	}
+	if (log_type == 2)
+	{
+		sprintf(logpath, "./log/%02d%02d%02d/centerserver_operate.log", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);
+	}
+	if (log_type == 3)
+	{
+		sprintf(logpath, "./log/%02d%02d%02d/code_module_operate.log", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);
+	}
+	if (log_type == 4)
+	{
+		sprintf(logpath, "./log/%02d%02d%02d/device_module_operate.log", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);
+	}
+
     log_fp = fopen(logpath, "a+");  
 	if (log_fp == NULL)
 	{
-		perror("open operate.log fail:");
+		perror("open log file fail:");
 		exit(EXIT_FAILURE);
 	}
     fwrite(buffer, 1, strlen(buffer), log_fp);  
@@ -1691,14 +1771,14 @@ void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, s
     if (shmid1 == -1) 
     {
 		perror("index shmget failed:");
-		p4_log(RUN_LOG, "index shmget failed.");
+		p4_log(STORAGE_RUN_LOG, "index shmget failed.");
 		exit(EXIT_FAILURE);
     }
     shared_index_memory_start = shmat(shmid1, (void *)0, 0);
     if (shared_index_memory_start == (void *)-1) 
     {
 		perror("index shmat failed:");
-		p4_log(RUN_LOG, "index shmat failed.");
+		p4_log(STORAGE_RUN_LOG, "index shmat failed.");
 		exit(EXIT_FAILURE);
     }
     shared_index_memory_end = shared_index_memory_start + index_mem_size;
@@ -1713,14 +1793,14 @@ void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, s
     if (shmid2 == -1) 
     {
 		fprintf(stderr, "frame shmget failed.\n");
-		p4_log(RUN_LOG, "frame shmget failed.");
+		p4_log(STORAGE_RUN_LOG, "frame shmget failed.");
 		exit(EXIT_FAILURE);
     }
     shared_frame_memory_start = shmat(shmid2, (void *)0, 0);
     if (shared_frame_memory_start == (void *)-1) 
     {
 		fprintf(stderr, "frame shmat failed.\n");
-		p4_log(RUN_LOG, "frame shmat failed.");
+		p4_log(STORAGE_RUN_LOG, "frame shmat failed.");
 		exit(EXIT_FAILURE);
     }
     shared_frame_memory_end = shared_frame_memory_start + frame_mem_size;
@@ -1797,5 +1877,98 @@ void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, s
 	
 	return;
 }
+
+void p4_heart(void)
+{
+	int ret = -1;
+	struct P4 *storage_msg = NULL;
+	TYPE storage_msg_type;
+	Module_Num storage_no;
+	unsigned int service_num = 0;
+	unsigned int storage_msg_len = 0;
+
+	storage_fd = create_socket(sockets[1]);
+	
+	storage_msg_type = HEART_TYPE;
+	storage_no = SRM_MODULE;
+	service_num = 1;
+	storage_msg = generate_message(storage_msg_type, storage_no, service_num, paths[1], 
+																				&storage_msg_len);
+	if (storage_msg == NULL)
+	{
+		perror("generate_message::HEART_TYPE fail:");
+		p4_log(STORAGE_RUN_LOG, "generate_message::HEART_TYPE fail.");
+		exit(EXIT_FAILURE);
+	}	
+
+	for (;;)
+	{
+		ret = send_message(storage_fd, storage_msg, server_file, storage_msg_len);
+		if (ret <= 0)
+		{
+			p4_log(STORAGE_RUN_LOG, "send_message::HEART_TYPE fail.");
+		}
+		sleep(5);
+	}
+
+	return;
+}
+
+void p4_log_collect(void)
+{
+	unsigned int len = 0;
+	unsigned char buf[1024];
+	struct sockaddr_un from = {0};
+
+	for (;;)
+	{
+		len = recv_data(storage_fd, buf, 1024, &from);
+	
+		if (len > 0)
+		{
+			//p4_log(xxx, "%s", buf);
+		}
+		sleep(5);
+	}
+	
+	return;
+}
+
+/* Initialize storage module, send register message to CenterServer. */
+void p4_storage_init(void)
+{
+	int ret = -1;
+	struct P4 *storage_msg = NULL;
+	TYPE storage_msg_type;
+	Module_Num storage_no;
+	unsigned int service_num = 0;
+	unsigned int storage_msg_len = 0;
+
+	storage_fd = create_socket(sockets[1]);
+	
+	storage_msg_type = REGISTER_TYPE;
+	storage_no = SRM_MODULE;
+	service_num = 1;
+	storage_msg = generate_message(storage_msg_type, storage_no, service_num, paths[1], 
+																				&storage_msg_len);
+	if (storage_msg == NULL)
+	{
+		perror("generate_message REGISTER_TYPE fail:");
+		p4_log(STORAGE_RUN_LOG, "generate_message::REGISTER_TYPE fail.");
+		exit(EXIT_FAILURE);
+	}	
+
+	ret = send_message(storage_fd, storage_msg, server_file, storage_msg_len);
+	if (ret < 0)
+	{
+		perror("send_message REGISTER_TYPE fail:");
+		p4_log(STORAGE_RUN_LOG, "send_message::REGISTER_TYPE fail.");
+		exit(EXIT_FAILURE);
+	}
+
+	return;
+}
+
+
 
 

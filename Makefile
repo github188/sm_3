@@ -1,16 +1,12 @@
-all:test shm2
+all:test
 
 test:
-	gcc -o test test.c p4storagefun.c
-shm2:
-	gcc -o shm2 shm2.c p4storagefun.c
-
-#clean:
-#	rm	shm1 shm2 $(objects1) $(objects2) *~ a.out -rf
+	#arm-hisiv100nptl-linux-gcc -o p4storage p4storage.c p4storagefun.c common.c -pthread
+	gcc -o p4storage p4storage.c p4storagefun.c common.c -pthread
 
 clean:
-	rm *~ a.out *.o shm2 test -rf
-	rm /mnt/hgfs/share/shm_3 -rf
-	cp ../shm_3 /mnt/hgfs/share/ -rf
+	rm *~ *.o -rf
 	rm video/* -rf
 	rm index/* -rf
+	rm /mnt/hgfs/share/storage_module -rf
+	cp ../storage_module /mnt/hgfs/share/ -rf
