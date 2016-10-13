@@ -218,7 +218,7 @@ int get_one_frame(void *shared_memory_start, void *shared_memory_end, P4VEM_ShMI
 			memcpy(frame, shared_memory_start + cshmindex->offset + FRAME_START_FLAG, tmp1 - FRAME_START_FLAG);
 			memcpy((void*)frame + tmp3, shared_memory_start + cshmindex->offset + tmp1, cshmindex->lenth - tmp1);	
 		}
-		else
+		else if(cshmindex->type == I_FRAME_TYPE)
 		{
 			memcpy(frame, shared_memory_start + cshmindex->offset + FRAME_START_FLAG, cshmindex->lenth - FRAME_START_FLAG);
 		}		
@@ -262,7 +262,7 @@ int get_one_frame(void *shared_memory_start, void *shared_memory_end, P4VEM_ShMI
 				}
 			}
 		}
-		else
+		else if(cshmindex->type == I_FRAME_TYPE)
 		{
 			if (to_end_len >= FRAME_START_FLAG)
 			{
@@ -276,7 +276,10 @@ int get_one_frame(void *shared_memory_start, void *shared_memory_end, P4VEM_ShMI
 			}
 		}
 	
-		shm_read_offset = SHM_HEAD_SIZE + from_start_len;
+		if ((cshmindex->type == I_FRAME_TYPE) || (cshmindex->type == P_FRAME_TYPE))
+		{
+			shm_read_offset = SHM_HEAD_SIZE + from_start_len;
+		}
 		return 1;
 	}	
 
@@ -306,15 +309,15 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 	                         cshmindex->time.year, cshmindex->time.month, cshmindex->time.day);
 	sprintf(index_day_path, "%s/%02d%02d%02d", index_channel_path,
 	                         cshmindex->time.year, cshmindex->time.month, cshmindex->time.day);
-	/*sprintf(video_tmp, "%s/tmp.h264", video_day_path,
-	                         cshmindex->time.year, cshmindex->time.month, cshmindex->time.day);
-	sprintf(index_tmp, "%s/tmp.index", index_day_path,
-	                         cshmindex->time.year, cshmindex->time.month, cshmindex->time.day);*/
 	sprintf(video_tmp, "%s/tmp.h264", video_day_path);
 	sprintf(index_tmp, "%s/tmp.index", index_day_path);
 
 	if (cshmindex->type == I_FRAME_TYPE)
 	{
+		#ifdef DEBUG
+			printf("storage one I_frame begin...\n");
+		#endif
+
 		INDEX_INFO frecord = {0};
 		INDEX_INFO lrecord = {0};
 		INDEX_INFO crecord = {0};	
@@ -542,9 +545,16 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 				return 1;
 			}	
 		}
+		#ifdef DEBUG
+			printf("storage one I_frame finish.\n");
+		#endif
 	}
-	else
+	else if(cshmindex->type == P_FRAME_TYPE)
 	{
+		#ifdef DEBUG
+			printf("storage one P_frame begin...\n");
+		#endif
+
 		unsigned tmp = sizeof(RMSTREAM_HEADER) + sizeof(RMFI2_VIDEOINFO);
 		for (i = 0; i < CHANNEL_CNT; i++)
 		{
@@ -555,11 +565,18 @@ int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FR
 				break;
 			}
 		}
-		memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));		
+		memcpy(shared_memory_start, &shm_read_offset, sizeof(shm_read_offset));	
+		#ifdef DEBUG	
+			printf("storage one P_frame finish.\n");
+		#endif
 		return 1;
 	}
 
-	return 1;
+	#ifdef DEBUG
+		printf("this frame invalid.\n");
+	#endif
+
+	return -1;
 }
 
 /* Initialize tmp.index file by one index record of all zero. */
@@ -738,7 +755,7 @@ void get_search_channel_date(char *channel_date_path, int size, FILE *file)
 
 	unsigned char tmp = 0;
 
-	printf("Please input video search channel-date. Notice: dont't input any blank\nUsage: Channel-YearMonthDay\nSuch as:01-160816\nPlease start input channel and date:");
+	printf("Please input video search channel-date. Notice: dont't input any blank\nUsage: Channel-YearMonthDay\nSuch as:01-160816\nSuch as:02-161011\nPlease start input channel and date:");
 	fflush(stdout);
 
 	fgets(channel_date_path, size, file);
@@ -1618,13 +1635,15 @@ void p4_log(int log_type, const char* format, ...)
     vsprintf(wrlog, format, args);  
     va_end(args);  
   
-    time_t now = 0;;  
+    time_t now = 0;
     time(&now);  
     struct tm *local = NULL;  
-    local = localtime(&now);  
+    local = localtime(&now); 
+
+	//fprintf(stderr, "%04d-%02d-%02d %02d:%02d:%02d\n", local->tm_year+1900, local->tm_mon+1, local->tm_mday, local->tm_hour, local->tm_min, local->tm_sec);
 
 	#ifdef DEBUG
-   	printf("%04d-%02d-%02d %02d:%02d:%02d %s\n", local->tm_year+1900, local->tm_mon, local->tm_mday, local->tm_hour, local->tm_min, local->tm_sec, wrlog);
+   	printf("%04d-%02d-%02d %02d:%02d:%02d %s\n", local->tm_year+1900, local->tm_mon+1, local->tm_mday, local->tm_hour, local->tm_min, local->tm_sec, wrlog);
 	#endif
 
     sprintf(buffer,"%04d-%02d-%02d %02d:%02d:%02d %s\n", local->tm_year+1900, local->tm_mon+1, local->tm_mday, local->tm_hour, local->tm_min, local->tm_sec, wrlog);  
@@ -1648,6 +1667,7 @@ void p4_log(int log_type, const char* format, ...)
 	else if (log_type == VIM_RUN_LOG)
 	{
 		sprintf(logpath, "./log/%02d%02d%02d/video_module_operate.log", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);
+		fprintf(stderr, "%s\n", logpath);
 	}
 	else if (log_type == DEM_RUN_LOG)
 	{
@@ -1661,8 +1681,10 @@ void p4_log(int log_type, const char* format, ...)
     log_fp = fopen(logpath, "a+");  
 	if (log_fp == NULL)
 	{
-		perror("open log file fail:");
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "\n***************************\n");
+		fprintf(stderr, "open log file fail:%s\n", logpath);
+		fprintf(stderr, "***************************\n");
+		return ;
 	}
     fwrite(buffer, 1, strlen(buffer), log_fp);  
     fclose(log_fp);  
@@ -1694,7 +1716,7 @@ void p4_terminal(void)
 			cnt = list_channel();
 			if (cnt == 0)
 			{
-				sleep(3);
+				sleep(2);
 				continue;
 			}
 			get_search_channel_date(date,sizeof(date), stdin);
@@ -1715,9 +1737,10 @@ void p4_terminal(void)
 		printf("\n***********exist the following video segments************\n");
 		for (i=0; i<cnt; i++)
 		{
+			printf("\n");
 			printf(L_CYAN "*\t\t\t%s-%s\t\t\t*\n" NONE, p[i].start_time, p[i].end_time);
 		}
-		printf("*************exist the above video segments**************\n\n");
+		printf("\n*************exist the above video segments**************\n\n");
 		for (;;)
 		{
 			get_search_time(time,sizeof(time), stdin);
@@ -1847,7 +1870,8 @@ void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, s
 		}
 
 		#ifdef DEBUG
-			printf("%d-%d-%d %d:%d:%d %d\n", newshmindex.time.year, newshmindex.time.month, 
+			printf("index frametype::%x\n", newshmindex.type);
+			printf("index time::%d-%d-%d %d:%d:%d %d\n", newshmindex.time.year, newshmindex.time.month, 
 											 newshmindex.time.day , newshmindex.time.hour, 
 											 newshmindex.time.minute, newshmindex.time.second, 
 											 newshmindex.offset);
@@ -1891,8 +1915,6 @@ void p4_heart(void)
 	unsigned int service_num = 0;
 	unsigned int storage_msg_len = 0;
 
-	//storage_fd = create_socket(sockets[1]);
-	
 	storage_msg_type = HEART_TYPE;
 	storage_no = SRM_MODULE;
 	service_num = 1;
@@ -1931,7 +1953,7 @@ void p4_log_collect(void)
 		len = recv_data(storage_fd, buf, 1024, &from);
 		if (len <= 0)
 		{
-			usleep(10000);
+			usleep(100000);
 			continue;
 		}
 		else
@@ -2000,7 +2022,20 @@ void p4_storage_init(void)
 		exit(EXIT_FAILURE);
 	}
 
-	free(storage_msg);	
+	free(storage_msg);
+
+	if (access("./video", F_OK) == -1)  
+   	{  
+		mkdir("./video", 0777);
+    }
+	if (access("./index", F_OK) == -1)  
+   	{  
+		mkdir("./index", 0777);
+    }
+	if (access("./log", F_OK) == -1)  
+   	{  
+		mkdir("./log", 0777);
+    } 
 
 	return;
 }

@@ -31,12 +31,13 @@
 
 //#define DEBUG 1
 
-#define FRAME_SIZE 1024*30
+//#define FRAME_SIZE 1024*30
+#define FRAME_SIZE 1024*50
 #define SHM_INDEX_NUM 1024
 #define FRAME_START_FLAG	5	/* start byte count of every frame. */
 
 #define CHANNEL_CNT	8
-#define SEG_TIME	10	/* seconds of every video segment. */
+#define SEG_TIME	300	/* seconds of every video segment. */
 #define PRINT_NUM	50	/* print valid Iframe data count. */
 
 #define PATH_LEN				255

@@ -35,7 +35,7 @@ void *p4_log_fun(void *arg)
 
 int main(void)
 {
-	int ret;
+	int ret = 0;
 
 	pthread_t p4_heart_id;
 	pthread_t p4_video_id;
