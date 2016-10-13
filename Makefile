@@ -10,7 +10,7 @@ p4storage:$(objects)
 	$(CC) -o p4storage $(objects) -lpthread -Wall -g
 
 clean:
-	rm *~ $(objects) p4storage
+	rm *~ $(objects) p4storage -rf
 	rm video/* -rf
 	rm index/* -rf
 	rm /mnt/hgfs/share/storage_module -rf

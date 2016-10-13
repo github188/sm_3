@@ -1891,7 +1891,7 @@ void p4_heart(void)
 	unsigned int service_num = 0;
 	unsigned int storage_msg_len = 0;
 
-	storage_fd = create_socket(sockets[1]);
+	//storage_fd = create_socket(sockets[1]);
 	
 	storage_msg_type = HEART_TYPE;
 	storage_no = SRM_MODULE;
@@ -1939,6 +1939,7 @@ void p4_log_collect(void)
 			log_module[0] = buf[1];
 			log_module[1] = buf[2];
 			log_module[2] = buf[3];
+
 			if (!strcmp(log_module, "STM"))
 			{
 				p4_log(STORAGE_RUN_LOG, "%s", buf);
