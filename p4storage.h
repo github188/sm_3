@@ -211,7 +211,7 @@ extern void output_search_video_info(const char* channel_date_path/*in*/, VIDEO_
 extern void print_iframe_info(const char* channel_date_path/*in*/, VIDEO_SEG_TIME *index_video_seg/*in*/, char * print_start_time/*in*/, char *print_end_time/*in*/);
 
 /* Print tmp.h264 information */
-extern void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_end_time/*in*/);
+extern void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_start_time/*in*/, char *print_end_time/*in*/);
 
 /* Print valid frame data. */
 extern void print_valid_frame_data(FRAME_PACKET *packet);

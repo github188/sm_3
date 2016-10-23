@@ -5,49 +5,6 @@
  Version: V3.3.3
  Date: 2016-9-17
  Desrciption: This file achieve file p4storage.h declaraction function.
- Function List: 
-	FILE *open_shm_index(const char *path);
-	int close_shm_index(FILE *indexfp);
-	int open_tmp(const char* tmpstring);
-	int get_one_shm_index(FILE *indexfp, P4VEM_ShMIndex_t *oldshmindex, P4VEM_ShMIndex_t *newshmindex);
-	int get_one_index(void *shared_index_memory_start, P4VEM_ShMIndex_t *newshmindex);
-	int get_one_frame(void *shared_memory_start, void *shared_memory_end, P4VEM_ShMIndex_t
-																*cshmindex,FRAME_PACKET *frame);
-	int storage_one_frame(void *shared_memory_start, P4VEM_ShMIndex_t *cshmindex, FRAME_PACKET *frame);
-	void init_index_tmp(int index_tmp_fd);
-	int get_current_index_record(int index_tmp_fd, P4VEM_ShMIndex_t *cshmindex, FRAME_PACKET *cframe, 
-																					INDEX_INFO *crecord);
-	int get_first_index_record(int index_tmp_fd, INDEX_INFO *frecord);
-	int put_current_index_record(int index_tmp_fd, INDEX_INFO *crecord);
-	int get_last_index_record(int index_tmp_fd, INDEX_INFO *lrecord);
-	int get_last_front_index_record(int index_tmp_fd, INDEX_INFO *lfrecord);
-	void get_search_channel_date(char *channel_date_path, int size, FILE *file);
-	void get_search_time(char *time, int size, FILE *file);
-	int search_channel_date_check(char *channel_date_path/, int size);
-	int search_time_check(char *time, int size);
-	VIDEO_SEG_TIME *fill_video_timeseg_array(const char* channel_date_path, int *video_seg_count/);
-	void free_video_timeseg_array(VIDEO_SEG_TIME *timeseg);
-	void sort_video_timeseg_array(VIDEO_SEG_TIME timeseg[], int left, int right);
-	int check_search_video_time(VIDEO_SEG_TIME timeseg[], int video_seg_count, const char *time, 
-																	VIDEO_SEG_TIME* update_timeseg);
-	void search_tmp_video_file(const char* channel_date_path, const char *time);
-	void output_search_video_info(const char* channel_date_path, VIDEO_SEG_TIME timeseg[], 
-											int video_seg_count, VIDEO_SEG_TIME *update_timeseg);
-	void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_video_seg, 
-													char * print_start_time, char *print_end_time);
-	void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_end_time);
-
-	void print_valid_frame_data(FRAME_PACKET *packet);
-	int convert_localtime_to_utc(FRAME_PACKET *packet);
-	void convert_utc_to_localtime(const unsigned int *time, char *ltime);
-	int list_channel(void);
-	void p4_log(int log_type, const char* format, ...);
-	void p4_terminal(void);
-	void p4_video(key_t index_mem_key, size_t index_mem_size, key_t frame_mem_key, 
-																	size_t frame_mem_size);
-	void p4_heart(void);
-	void p4_log_collect(void);
-	void p4_storage_init(void);
 ***********************************************************************/
 
 #include "p4storage.h"
@@ -755,7 +712,7 @@ void get_search_channel_date(char *channel_date_path, int size, FILE *file)
 
 	unsigned char tmp = 0;
 
-	printf("Please input video search channel-date. Notice: dont't input any blank\nUsage: Channel-YearMonthDay\nSuch as:01-160816\nSuch as:02-161011\nPlease start input channel and date:");
+	printf("Please input video search channel-date. Notice: dont't input any blank\nUsage: Channel-YearMonthDay\nSuch as:01-160816\nSuch as:02-161011\nSuch as:03-161013\nSuch as:04-161013\nSuch as:05-161013\nSuch as:06-161013\nPlease start input channel and date:");
 	fflush(stdout);
 
 	fgets(channel_date_path, size, file);
@@ -1235,15 +1192,29 @@ void search_tmp_video_file(const char* channel_date_path, const char *time)
 		return;
 	}
 
-	if (strcmp(tmp_search.end_time, index_end) <= 0)
+	if (strcmp(tmp_search.end_time, index_end) <= 0) 
 	{
 		/* output tmp.h264 from  index_start to tmp_search.end_time */
-		print_tmp_video_info(video_fd, index_fd, tmp_search.end_time);
+		if (strcmp(tmp_search.start_time, index_start) >= 0) 
+		{
+			print_tmp_video_info(video_fd, index_fd, tmp_search.start_time, tmp_search.end_time);
+		}
+		else
+		{
+			print_tmp_video_info(video_fd, index_fd, index_start, tmp_search.end_time);
+		}
 	}
 	else if (strcmp(tmp_search.end_time, index_end) > 0)
 	{
 		/* output tmp.h264 from  index_start to index_end */
-		print_tmp_video_info(video_fd, index_fd, index_end);
+		if (strcmp(tmp_search.start_time, index_start) >= 0) 
+		{
+			print_tmp_video_info(video_fd, index_fd, tmp_search.start_time, index_end);
+		}
+		else
+		{
+			print_tmp_video_info(video_fd, index_fd, index_start, index_end);
+		}
 	}
 	printf(YELLOW "Search completed.\n" NONE);
 
@@ -1388,7 +1359,7 @@ void print_iframe_info(const char* channel_date_path, VIDEO_SEG_TIME *index_vide
 		{
 			if (strcmp(buf, print_end_time) > 0)
 			{
-				return; /* 084201-084201 (084201 no exist) */
+				return; /* such as:084201-084201 (if 084201 no exist) */
 			}
 			#ifdef DEBUG
 				printf("print_start_time no exist, begin output Iframe info from next second.\n");
@@ -1454,9 +1425,9 @@ end:
 }
 
 /* If tmp.h264 file include the relative frame, then print it. */
-void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_end_time)
+void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_start_time, char *print_end_time)
 {
-	if (print_end_time == NULL)
+	if (print_end_time == NULL || print_start_time == NULL )
 	{
 		p4_log(STORAGE_RUN_LOG, "print_tmp_video_info string error.\n");
 		return;
@@ -1469,8 +1440,43 @@ void print_tmp_video_info(int tmp_video_fd, int tmp_index_fd, char *print_end_ti
 	unsigned char buf[7] = {0};
 	
 	lseek(tmp_index_fd, sizeof(INDEX_INFO), SEEK_SET);
+	for (;;)
+	{
+		ret = read(tmp_index_fd, &tmp1, sizeof(INDEX_INFO));
+		if (ret == -1)
+		{
+			p4_log(STORAGE_RUN_LOG, "read tmp index file fail.\n");
+			goto end;
+		}
+		else if (ret == 0)
+		{
+			goto end;
+		}
+		convert_utc_to_localtime(&(tmp1.time), buf);
+
+		if (strcmp(buf, print_start_time) == 0)
+		{
+			break;
+		}
+		if ((strcmp(buf, print_start_time) > 0))
+		{
+			if (strcmp(buf, print_end_time) > 0)
+			{
+				return; /* 084201-084201 (084201 no exist) */
+			}
+			break;			
+		}
+		
+	}
+	lseek(tmp_video_fd, tmp1.offset, SEEK_SET);
+	read(tmp_video_fd, &tmp2, tmp1.len);
+	print_valid_frame_data(&tmp2);
+
+	//lseek(tmp_index_fd, sizeof(INDEX_INFO), SEEK_SET);
 	while (strcmp(buf, print_end_time) != 0)
 	{
+		memset(&tmp1, 0, sizeof(INDEX_INFO));
+		memset(&tmp2, 0, sizeof(FRAME_PACKET));
 		ret = read(tmp_index_fd, &tmp1, sizeof(INDEX_INFO));
 		if (ret == -1)
 		{
@@ -1546,7 +1552,7 @@ int convert_localtime_to_utc(FRAME_PACKET *packet)
 	ret = mktime(&info);
 	if( ret == -1 )
 	{
-		p4_log(STORAGE_RUN_LOG, "time convert error:");
+		p4_log(STORAGE_RUN_LOG, "time convert error.");
 		return -1;
 	}
 
@@ -1612,7 +1618,7 @@ int list_channel(void)
 		ret = strstr(ptr->d_name, channel_0x);
 		if (ret != 0)
 		{
-			printf(L_CYAN "%s\t" NONE, ptr->d_name);
+			printf(L_CYAN "\t%s" NONE, ptr->d_name);
 		}
 	}
 	printf("\n");
@@ -1640,15 +1646,12 @@ void p4_log(int log_type, const char* format, ...)
     struct tm *local = NULL;  
     local = localtime(&now); 
 
-	//fprintf(stderr, "%04d-%02d-%02d %02d:%02d:%02d\n", local->tm_year+1900, local->tm_mon+1, local->tm_mday, local->tm_hour, local->tm_min, local->tm_sec);
-
 	#ifdef DEBUG
    	printf("%04d-%02d-%02d %02d:%02d:%02d %s\n", local->tm_year+1900, local->tm_mon+1, local->tm_mday, local->tm_hour, local->tm_min, local->tm_sec, wrlog);
 	#endif
 
     sprintf(buffer,"%04d-%02d-%02d %02d:%02d:%02d %s\n", local->tm_year+1900, local->tm_mon+1, local->tm_mday, local->tm_hour, local->tm_min, local->tm_sec, wrlog);  
 
-	 /*sprintf(day,"./log/%02d%02d%02d", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday, local->tm_hour, local->tm_min, local->tm_sec);*/
  	sprintf(day,"./log/%02d%02d%02d", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);  
 
 	if ((access(day, F_OK)) == -1)  
@@ -1667,7 +1670,9 @@ void p4_log(int log_type, const char* format, ...)
 	else if (log_type == VIM_RUN_LOG)
 	{
 		sprintf(logpath, "./log/%02d%02d%02d/video_module_operate.log", local->tm_year+1900-2000, local->tm_mon+1, local->tm_mday);
-		fprintf(stderr, "%s\n", logpath);
+		#ifdef DEBUG
+			fprintf(stderr, "%s\n", logpath);
+		#endif
 	}
 	else if (log_type == DEM_RUN_LOG)
 	{
@@ -1681,9 +1686,11 @@ void p4_log(int log_type, const char* format, ...)
     log_fp = fopen(logpath, "a+");  
 	if (log_fp == NULL)
 	{
-		fprintf(stderr, "\n***************************\n");
-		fprintf(stderr, "open log file fail:%s\n", logpath);
-		fprintf(stderr, "***************************\n");
+		#ifdef DEBUG
+			fprintf(stderr, "\n***************************\n");
+			fprintf(stderr, "open log file fail:%s\n", logpath);
+			fprintf(stderr, "***************************\n");	
+		#endif
 		return ;
 	}
     fwrite(buffer, 1, strlen(buffer), log_fp);  
@@ -1702,12 +1709,13 @@ void p4_terminal(void)
 	char date[SEARCH_CHANNEL_DATE] = {0};
 	char time[SEARCH_TIME] = {0};
 
-	printf(L_PURPLE "*********************************************************\n" NONE);
-	printf(L_PURPLE "*                                                       *\n" NONE);
-	printf(L_PURPLE "*                  Welcome to GH4 group                 *\n" NONE);
-	printf(L_PURPLE "*                       Enjoy it                        *\n" NONE);
-	printf(L_PURPLE "*                                                       *\n" NONE);
-	printf(L_PURPLE "*********************************************************\n" NONE);
+	printf(RED "*********************************************************\n" NONE);
+	printf(RED "*                                                       *\n" NONE);
+	printf(RED "*                  Welcome to GH4 group                 *\n" NONE);
+	printf(RED "*                       Enjoy it                        *\n" NONE);
+	printf(RED "*                                                       *\n" NONE);
+	printf(RED "*********************************************************\n" NONE);
+
 	while(1)
 	{
 		for (;;)
@@ -2036,6 +2044,8 @@ void p4_storage_init(void)
    	{  
 		mkdir("./log", 0777);
     } 
+
+	print_heart();
 
 	return;
 }

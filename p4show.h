@@ -6,6 +6,9 @@
 #define L_BLACK              "\e[1;30m"
 #define RED                  "\e[0;31m"
 #define L_RED                "\e[1;31m"
+
+#define B_RED                "\e[5;31m"
+
 #define GREEN                "\e[0;32m"
 #define L_GREEN              "\e[1;32m"
 #define BROWN                "\e[0;33m"
@@ -25,5 +28,8 @@
 #define REVERSE              "\e[7m"
 #define HIDE                 "\e[8m"
 #define CLEAR                "\e[2J"
+
+/*Print one heart-shaped pattern. */
+void print_heart(void);
 
 #endif /* p4show.h */
